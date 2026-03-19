@@ -10,44 +10,64 @@ import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    Optional<Product> findBySlug(String slug);
+        Optional<Product> findBySlug(String slug);
 
-    Optional<Product> findBySku(String sku);
+        Optional<Product> findBySku(String sku);
 
-    boolean existsBySlug(String slug);
+        boolean existsBySlug(String slug);
 
-    boolean existsBySku(String sku);
+        boolean existsBySku(String sku);
 
-    @Query("""
-            select p
-            from Product p
-            join fetch p.category
-            order by p.name asc
-            """)
-    List<Product> findAllWithCategoryOrderByNameAsc();
+        long countByIsActiveTrue();
 
-    @Query("""
-            select p
-            from Product p
-            join fetch p.category
-            where p.id = :id
-            """)
-    Optional<Product> findByIdWithCategory(Long id);
+        @Query("""
+                        select count(p)
+                        from Product p
+                        where p.isActive = true
+                          and p.stock <= p.lowStockThreshold
+                        """)
+        long countLowStockProducts();
 
-    @Query("""
-            select p
-            from Product p
-            join fetch p.category
-            where p.slug = :slug
-            """)
-    Optional<Product> findBySlugWithCategory(String slug);
+        @Query("""
+                        select p
+                        from Product p
+                        join fetch p.category
+                        where p.isActive = true
+                          and p.stock <= p.lowStockThreshold
+                        order by p.stock asc, p.name asc
+                        """)
+        List<Product> findLowStockProducts();
 
-    @Query("""
-            select p
-            from Product p
-            join fetch p.category
-            where p.category.id = :categoryId
-            order by p.name asc
-            """)
-    List<Product> findAllWithCategoryByCategoryIdOrderByNameAsc(Long categoryId);
+        @Query("""
+                        select p
+                        from Product p
+                        join fetch p.category
+                        order by p.name asc
+                        """)
+        List<Product> findAllWithCategoryOrderByNameAsc();
+
+        @Query("""
+                        select p
+                        from Product p
+                        join fetch p.category
+                        where p.id = :id
+                        """)
+        Optional<Product> findByIdWithCategory(Long id);
+
+        @Query("""
+                        select p
+                        from Product p
+                        join fetch p.category
+                        where p.slug = :slug
+                        """)
+        Optional<Product> findBySlugWithCategory(String slug);
+
+        @Query("""
+                        select p
+                        from Product p
+                        join fetch p.category
+                        where p.category.id = :categoryId
+                        order by p.name asc
+                        """)
+        List<Product> findAllWithCategoryByCategoryIdOrderByNameAsc(Long categoryId);
 }

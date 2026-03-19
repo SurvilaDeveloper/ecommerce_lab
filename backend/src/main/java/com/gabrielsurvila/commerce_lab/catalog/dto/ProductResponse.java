@@ -6,24 +6,26 @@ import java.time.LocalDateTime;
 
 public class ProductResponse {
 
-    private Long id;
-    private Long categoryId;
-    private String categoryName;
-    private String name;
-    private String slug;
-    private String sku;
-    private String shortDescription;
-    private String description;
-    private BigDecimal price;
-    private BigDecimal compareAtPrice;
-    private BigDecimal costPrice;
-    private String currency;
-    private Integer stock;
-    private Integer lowStockThreshold;
-    private boolean isActive;
-    private boolean isFeatured;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private final Long id;
+    private final Long categoryId;
+    private final String categoryName;
+    private final String name;
+    private final String slug;
+    private final String sku;
+    private final String shortDescription;
+    private final String description;
+    private final BigDecimal price;
+    private final BigDecimal compareAtPrice;
+    private final BigDecimal costPrice;
+    private final String currency;
+    private final Integer stock;
+    private final Integer lowStockThreshold;
+    private final boolean active;
+    private final boolean featured;
+    private final String primaryImageUrl;
+    private final String primaryImageAltText;
+    private final LocalDateTime createdAt;
+    private final LocalDateTime updatedAt;
 
     public ProductResponse(
             Long id,
@@ -40,8 +42,10 @@ public class ProductResponse {
             String currency,
             Integer stock,
             Integer lowStockThreshold,
-            boolean isActive,
-            boolean isFeatured,
+            boolean active,
+            boolean featured,
+            String primaryImageUrl,
+            String primaryImageAltText,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
         this.id = id;
@@ -58,8 +62,10 @@ public class ProductResponse {
         this.currency = currency;
         this.stock = stock;
         this.lowStockThreshold = lowStockThreshold;
-        this.isActive = isActive;
-        this.isFeatured = isFeatured;
+        this.active = active;
+        this.featured = featured;
+        this.primaryImageUrl = primaryImageUrl;
+        this.primaryImageAltText = primaryImageAltText;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -121,11 +127,19 @@ public class ProductResponse {
     }
 
     public boolean isActive() {
-        return isActive;
+        return active;
     }
 
     public boolean isFeatured() {
-        return isFeatured;
+        return featured;
+    }
+
+    public String getPrimaryImageUrl() {
+        return primaryImageUrl;
+    }
+
+    public String getPrimaryImageAltText() {
+        return primaryImageAltText;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -3,9 +3,12 @@ package com.gabrielsurvila.commerce_lab.catalog.service;
 
 import com.gabrielsurvila.commerce_lab.catalog.dto.CreateProductRequest;
 import com.gabrielsurvila.commerce_lab.catalog.dto.ProductResponse;
+import com.gabrielsurvila.commerce_lab.catalog.dto.UpdateProductRequest;
 import com.gabrielsurvila.commerce_lab.catalog.entity.Category;
 import com.gabrielsurvila.commerce_lab.catalog.entity.Product;
+import com.gabrielsurvila.commerce_lab.catalog.entity.ProductImage;
 import com.gabrielsurvila.commerce_lab.catalog.repository.CategoryRepository;
+import com.gabrielsurvila.commerce_lab.catalog.repository.ProductImageRepository;
 import com.gabrielsurvila.commerce_lab.catalog.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +24,15 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductImageRepository productImageRepository;
 
     public ProductService(
             ProductRepository productRepository,
-            CategoryRepository categoryRepository) {
+            CategoryRepository categoryRepository,
+            ProductImageRepository productImageRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
+        this.productImageRepository = productImageRepository;
     }
 
     @Transactional
@@ -109,6 +115,92 @@ public class ProductService {
         return toResponse(saved);
     }
 
+    @Transactional
+    public ProductResponse update(Long id, UpdateProductRequest request) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("Product id must be greater than zero");
+        }
+
+        if (request == null) {
+            throw new IllegalArgumentException("Update product request is required");
+        }
+
+        Product product = productRepository.findByIdWithCategory(id)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+
+        Long categoryId = request.getCategoryId();
+        if (categoryId == null || categoryId <= 0) {
+            throw new IllegalArgumentException("Category id is required");
+        }
+
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+
+        String name = normalizeRequiredText(request.getName(), "Product name is required");
+        String rawSlug = normalizeRequiredText(request.getSlug(), "Product slug is required");
+        String slug = normalizeSlug(rawSlug);
+        String sku = normalizeRequiredText(request.getSku(), "Product SKU is required").toUpperCase(Locale.ROOT);
+        String shortDescription = normalizeOptionalText(request.getShortDescription());
+        String description = normalizeOptionalText(request.getDescription());
+        String currency = normalizeCurrency(request.getCurrency());
+
+        BigDecimal price = requiredNonNegativeAmount(request.getPrice(), "Product price is required");
+        BigDecimal compareAtPrice = optionalNonNegativeAmount(
+                request.getCompareAtPrice(),
+                "Compare at price must be greater than or equal to zero");
+        BigDecimal costPrice = optionalNonNegativeAmount(
+                request.getCostPrice(),
+                "Cost price must be greater than or equal to zero");
+
+        Integer stock = normalizeNonNegativeInteger(
+                request.getStock(),
+                0,
+                "Stock must be greater than or equal to zero");
+
+        Integer lowStockThreshold = normalizeNonNegativeInteger(
+                request.getLowStockThreshold(),
+                0,
+                "Low stock threshold must be greater than or equal to zero");
+
+        boolean isActive = request.getIsActive() == null || request.getIsActive();
+        boolean isFeatured = request.getIsFeatured() != null && request.getIsFeatured();
+
+        if (slug.isBlank()) {
+            throw new IllegalArgumentException("Product slug is invalid");
+        }
+
+        if (!slug.equals(product.getSlug()) && productRepository.existsBySlug(slug)) {
+            throw new IllegalArgumentException("Product slug already exists");
+        }
+
+        if (!sku.equals(product.getSku()) && productRepository.existsBySku(sku)) {
+            throw new IllegalArgumentException("Product SKU already exists");
+        }
+
+        if (compareAtPrice != null && compareAtPrice.compareTo(price) < 0) {
+            throw new IllegalArgumentException("Compare at price must be greater than or equal to price");
+        }
+
+        product.setCategory(category);
+        product.setName(name);
+        product.setSlug(slug);
+        product.setSku(sku);
+        product.setShortDescription(shortDescription);
+        product.setDescription(description);
+        product.setPrice(price);
+        product.setCompareAtPrice(compareAtPrice);
+        product.setCostPrice(costPrice);
+        product.setCurrency(currency);
+        product.setStock(stock);
+        product.setLowStockThreshold(lowStockThreshold);
+        product.setActive(isActive);
+        product.setFeatured(isFeatured);
+
+        Product saved = productRepository.save(product);
+
+        return toResponse(saved);
+    }
+
     public List<ProductResponse> findAll() {
         return productRepository.findAllWithCategoryOrderByNameAsc()
                 .stream()
@@ -153,6 +245,13 @@ public class ProductService {
     }
 
     private ProductResponse toResponse(Product product) {
+        ProductImage primaryImage = productImageRepository.findFirstByProductAndIsPrimaryTrue(product)
+                .orElseGet(
+                        () -> productImageRepository.findFirstByProductOrderBySortOrderAscIdAsc(product).orElse(null));
+
+        String primaryImageUrl = primaryImage != null ? primaryImage.getImageUrl() : null;
+        String primaryImageAltText = primaryImage != null ? primaryImage.getAltText() : null;
+
         return new ProductResponse(
                 product.getId(),
                 product.getCategory().getId(),
@@ -170,6 +269,8 @@ public class ProductService {
                 product.getLowStockThreshold(),
                 product.isActive(),
                 product.isFeatured(),
+                primaryImageUrl,
+                primaryImageAltText,
                 product.getCreatedAt(),
                 product.getUpdatedAt());
     }

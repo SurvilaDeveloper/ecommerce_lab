@@ -1,18 +1,26 @@
-//frontend/src/app/admin/products/images/page.tsx
+//frontend/src/app/admin/products/[productId]/images/page.tsx
 "use client";
 
-import { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
-
-type LocalImage = {
-    id: string;
-    file: File;
-    previewUrl: string;
-    isPrimary: boolean;
-};
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "next/navigation";
+import { RequireRole } from "@/components/auth/RequireRole";
+import {
+    deleteProductImage,
+    getProductImages,
+    type ProductImage,
+    updateProductImage,
+    uploadProductImage,
+} from "@/lib/product-images";
 
 const MAX_FILES = 8;
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+type PendingImage = {
+    id: string;
+    file: File;
+    previewUrl: string;
+};
 
 function formatBytes(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
@@ -31,28 +39,63 @@ function moveItem<T>(array: T[], fromIndex: number, toIndex: number) {
     return copy;
 }
 
-export default function ProductImagesPage() {
+function ProductImagesPageContent() {
+    const params = useParams();
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    const [selectedImages, setSelectedImages] = useState<LocalImage[]>([]);
-    const [isUploading, setIsUploading] = useState(false);
-    const [message, setMessage] = useState<string>("");
-    const [errors, setErrors] = useState<string[]>([]);
-    const [isDragActive, setIsDragActive] = useState(false);
+    const productId = Number(params.productId);
 
-    const totalSize = useMemo(() => {
-        return selectedImages.reduce((acc, image) => acc + image.file.size, 0);
-    }, [selectedImages]);
+    const [images, setImages] = useState<ProductImage[]>([]);
+    const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isSavingOrder, setIsSavingOrder] = useState(false);
+    const [message, setMessage] = useState("");
+    const [errors, setErrors] = useState<string[]>([]);
+
+    const totalPendingSize = useMemo(() => {
+        return pendingImages.reduce((acc, image) => acc + image.file.size, 0);
+    }, [pendingImages]);
 
     const primaryImage = useMemo(() => {
-        return selectedImages.find((img) => img.isPrimary) ?? null;
-    }, [selectedImages]);
+        return images.find((img) => img.isPrimary) ?? null;
+    }, [images]);
+
+    useEffect(() => {
+        if (Number.isInteger(productId) && productId > 0) {
+            loadImages();
+        } else {
+            setIsLoading(false);
+            setMessage("El productId de la URL no es válido.");
+        }
+    }, [productId]);
 
     useEffect(() => {
         return () => {
-            selectedImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+            pendingImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
         };
-    }, [selectedImages]);
+    }, [pendingImages]);
+
+    async function loadImages() {
+        setIsLoading(true);
+        setMessage("");
+
+        try {
+            const data = await getProductImages(productId);
+            setImages(sortImages(data));
+        } catch (error) {
+            setMessage(getErrorMessage(error, "No se pudieron cargar las imágenes."));
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    function sortImages(data: ProductImage[]) {
+        return [...data].sort((a, b) => {
+            if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+            return a.id - b.id;
+        });
+    }
 
     function addFiles(filesList: FileList | File[]) {
         const incomingFiles = Array.from(filesList);
@@ -60,7 +103,7 @@ export default function ProductImagesPage() {
         if (incomingFiles.length === 0) return;
 
         const nextErrors: string[] = [];
-        const existingKeys = new Set(selectedImages.map((img) => getFileKey(img.file)));
+        const existingKeys = new Set(pendingImages.map((img) => getFileKey(img.file)));
         const acceptedFiles: File[] = [];
 
         for (const file of incomingFiles) {
@@ -81,8 +124,8 @@ export default function ProductImagesPage() {
                 continue;
             }
 
-            if (selectedImages.length + acceptedFiles.length >= MAX_FILES) {
-                nextErrors.push(`Solo podés seleccionar hasta ${MAX_FILES} imágenes.`);
+            if (pendingImages.length + acceptedFiles.length >= MAX_FILES) {
+                nextErrors.push(`Solo podés seleccionar hasta ${MAX_FILES} imágenes por tanda.`);
                 break;
             }
 
@@ -90,14 +133,13 @@ export default function ProductImagesPage() {
             acceptedFiles.push(file);
         }
 
-        const newImages: LocalImage[] = acceptedFiles.map((file, index) => ({
+        const newImages: PendingImage[] = acceptedFiles.map((file) => ({
             id: crypto.randomUUID(),
             file,
             previewUrl: URL.createObjectURL(file),
-            isPrimary: selectedImages.length === 0 && index === 0,
         }));
 
-        setSelectedImages((prev) => [...prev, ...newImages]);
+        setPendingImages((prev) => [...prev, ...newImages]);
         setErrors(nextErrors);
         setMessage("");
     }
@@ -110,104 +152,113 @@ export default function ProductImagesPage() {
         event.target.value = "";
     }
 
-    function handleDragOver(event: DragEvent<HTMLDivElement>) {
-        event.preventDefault();
-        setIsDragActive(true);
-    }
-
-    function handleDragLeave(event: DragEvent<HTMLDivElement>) {
-        event.preventDefault();
-        setIsDragActive(false);
-    }
-
-    function handleDrop(event: DragEvent<HTMLDivElement>) {
-        event.preventDefault();
-        setIsDragActive(false);
-
-        if (!event.dataTransfer.files?.length) return;
-        addFiles(event.dataTransfer.files);
-    }
-
-    function handleRemoveImage(imageId: string) {
-        setSelectedImages((prev) => {
-            const imageToRemove = prev.find((img) => img.id === imageId);
-            if (imageToRemove) {
-                URL.revokeObjectURL(imageToRemove.previewUrl);
+    function handleRemovePendingImage(imageId: string) {
+        setPendingImages((prev) => {
+            const target = prev.find((img) => img.id === imageId);
+            if (target) {
+                URL.revokeObjectURL(target.previewUrl);
             }
-
-            const updated = prev.filter((img) => img.id !== imageId);
-
-            if (updated.length > 0 && !updated.some((img) => img.isPrimary)) {
-                updated[0] = { ...updated[0], isPrimary: true };
-            }
-
-            return [...updated];
+            return prev.filter((img) => img.id !== imageId);
         });
-
-        setMessage("");
     }
 
-    function handleSetPrimary(imageId: string) {
-        setSelectedImages((prev) =>
-            prev.map((img) => ({
-                ...img,
-                isPrimary: img.id === imageId,
-            }))
-        );
-
-        setMessage("");
-    }
-
-    function handleMoveUp(index: number) {
-        if (index === 0) return;
-
-        setSelectedImages((prev) => moveItem(prev, index, index - 1));
-        setMessage("");
-    }
-
-    function handleMoveDown(index: number) {
-        if (index === selectedImages.length - 1) return;
-
-        setSelectedImages((prev) => moveItem(prev, index, index + 1));
-        setMessage("");
-    }
-
-    function handleClearSelection() {
-        selectedImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-        setSelectedImages([]);
+    function handleClearPendingSelection() {
+        pendingImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+        setPendingImages([]);
         setErrors([]);
         setMessage("");
     }
 
-    async function handleFakeUpload() {
-        if (selectedImages.length === 0) {
+    async function handleUploadPendingImages() {
+        if (pendingImages.length === 0) {
             setMessage("Primero seleccioná al menos una imagen.");
             return;
         }
 
         setIsUploading(true);
-        setMessage("");
         setErrors([]);
+        setMessage("");
 
-        await new Promise((resolve) => setTimeout(resolve, 1200));
+        try {
+            const hasPrimary = images.some((img) => img.isPrimary);
 
-        const payload = selectedImages.map((image, index) => ({
-            name: image.file.name,
-            size: image.file.size,
-            type: image.file.type,
-            isPrimary: image.isPrimary,
-            order: index,
-        }));
+            for (let index = 0; index < pendingImages.length; index += 1) {
+                const pending = pendingImages[index];
 
-        console.log("SIMULACIÓN DE SUBIDA:");
-        console.table(payload);
+                await uploadProductImage(productId, pending.file, {
+                    isPrimary: !hasPrimary && index === 0,
+                });
+            }
 
-        setMessage("Subida simulada correctamente. Revisá la consola del navegador.");
-        setIsUploading(false);
+            handleClearPendingSelection();
+            await loadImages();
+            setMessage("Las imágenes se subieron correctamente.");
+        } catch (error) {
+            setMessage(getErrorMessage(error, "No se pudieron subir las imágenes."));
+        } finally {
+            setIsUploading(false);
+        }
+    }
+
+    async function handleDeleteImage(imageId: number) {
+        try {
+            setMessage("");
+            await deleteProductImage(productId, imageId);
+            await loadImages();
+            setMessage("La imagen se eliminó correctamente.");
+        } catch (error) {
+            setMessage(getErrorMessage(error, "No se pudo eliminar la imagen."));
+        }
+    }
+
+    async function handleSetPrimary(imageId: number) {
+        try {
+            setMessage("");
+            await updateProductImage(productId, imageId, {
+                isPrimary: true,
+            });
+            await loadImages();
+            setMessage("La imagen principal se actualizó correctamente.");
+        } catch (error) {
+            setMessage(getErrorMessage(error, "No se pudo actualizar la imagen principal."));
+        }
+    }
+
+    function handleMoveUp(index: number) {
+        if (index === 0) return;
+        setImages((prev) => moveItem(prev, index, index - 1));
+    }
+
+    function handleMoveDown(index: number) {
+        if (index === images.length - 1) return;
+        setImages((prev) => moveItem(prev, index, index + 1));
+    }
+
+    async function handleSaveOrder() {
+        if (images.length === 0) return;
+
+        setIsSavingOrder(true);
+        setMessage("");
+
+        try {
+            for (let index = 0; index < images.length; index += 1) {
+                const image = images[index];
+                await updateProductImage(productId, image.id, {
+                    sortOrder: index,
+                });
+            }
+
+            await loadImages();
+            setMessage("El orden de las imágenes se guardó correctamente.");
+        } catch (error) {
+            setMessage(getErrorMessage(error, "No se pudo guardar el orden de las imágenes."));
+        } finally {
+            setIsSavingOrder(false);
+        }
     }
 
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-100">
+        <main className="min-h-[calc(100vh-73px)] bg-slate-950 text-slate-100">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10">
                 <header className="space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-400">
@@ -220,16 +271,13 @@ export default function ProductImagesPage() {
                                 Gestión de imágenes del producto
                             </h1>
                             <p className="max-w-3xl text-sm leading-6 text-slate-400">
-                                Esta pantalla ya modela bastante bien el flujo real de carga. Por
-                                ahora todo ocurre en memoria y la subida está simulada, pero el
-                                objetivo es que después la conectemos directamente con tu backend
-                                Java y Cloudinary.
+                                Esta pantalla ya trabaja sobre el producto real indicado en la URL.
                             </p>
                         </div>
 
                         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 text-sm text-slate-300">
                             <p>
-                                Límite: <span className="font-semibold text-slate-100">{MAX_FILES}</span> imágenes
+                                Producto actual: <span className="font-semibold text-slate-100">#{productId}</span>
                             </p>
                             <p>
                                 Máximo por archivo:{" "}
@@ -244,33 +292,23 @@ export default function ProductImagesPage() {
                         <div className="mb-5 space-y-1">
                             <h2 className="text-xl font-semibold">Seleccionar imágenes</h2>
                             <p className="text-sm text-slate-400">
-                                Podés arrastrar imágenes o usar el selector. La primera imagen
-                                queda como principal automáticamente.
+                                Estas imágenes todavía no se subieron. Primero las seleccionás y
+                                después las enviás al backend.
                             </p>
                         </div>
 
-                        <div
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                            className={[
-                                "rounded-2xl border-2 border-dashed p-8 transition",
-                                isDragActive
-                                    ? "border-sky-400 bg-sky-500/10"
-                                    : "border-slate-700 bg-slate-950/70",
-                            ].join(" ")}
-                        >
+                        <div className="rounded-2xl border-2 border-dashed border-slate-700 bg-slate-950/70 p-8 transition">
                             <div className="flex flex-col items-center justify-center gap-4 text-center">
                                 <div className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                                    Drag & Drop
+                                    Selección local
                                 </div>
 
                                 <div className="space-y-2">
                                     <p className="text-lg font-semibold text-slate-100">
-                                        Arrastrá tus imágenes acá
+                                        Elegí imágenes para subir
                                     </p>
                                     <p className="text-sm text-slate-400">
-                                        o elegilas manualmente desde tu computadora
+                                        Después las subimos a Cloudinary desde el backend Java
                                     </p>
                                 </div>
 
@@ -292,7 +330,7 @@ export default function ProductImagesPage() {
                                 />
 
                                 <p className="text-xs text-slate-500">
-                                    Formatos aceptados: imágenes. Máximo {MAX_FILES} archivos.
+                                    Máximo {MAX_FILES} archivos por tanda
                                 </p>
                             </div>
                         </div>
@@ -319,20 +357,29 @@ export default function ProductImagesPage() {
                         <div className="mt-6 flex flex-wrap gap-3">
                             <button
                                 type="button"
-                                onClick={handleFakeUpload}
-                                disabled={isUploading}
+                                onClick={handleUploadPendingImages}
+                                disabled={pendingImages.length === 0 || isUploading}
                                 className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {isUploading ? "Simulando subida..." : "Simular subida"}
+                                {isUploading ? "Subiendo..." : "Subir imágenes"}
                             </button>
 
                             <button
                                 type="button"
-                                onClick={handleClearSelection}
-                                disabled={selectedImages.length === 0 || isUploading}
+                                onClick={handleClearPendingSelection}
+                                disabled={pendingImages.length === 0 || isUploading}
                                 className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 Limpiar selección
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleSaveOrder}
+                                disabled={images.length === 0 || isSavingOrder}
+                                className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {isSavingOrder ? "Guardando orden..." : "Guardar orden"}
                             </button>
                         </div>
                     </div>
@@ -342,26 +389,32 @@ export default function ProductImagesPage() {
 
                         <div className="mt-5 grid gap-4">
                             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-                                <p className="text-xs uppercase tracking-wide text-slate-500">Cantidad</p>
-                                <p className="mt-2 text-3xl font-bold">{selectedImages.length}</p>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-                                <p className="text-xs uppercase tracking-wide text-slate-500">Tamaño total</p>
-                                <p className="mt-2 text-3xl font-bold">{formatBytes(totalSize)}</p>
-                            </div>
-
-                            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-                                <p className="text-xs uppercase tracking-wide text-slate-500">Estado</p>
-                                <p className="mt-2 text-3xl font-bold">
-                                    {isUploading ? "Subiendo..." : "Borrador"}
+                                <p className="text-xs uppercase tracking-wide text-slate-500">
+                                    Imágenes subidas
                                 </p>
+                                <p className="mt-2 text-3xl font-bold">{images.length}</p>
                             </div>
 
                             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-                                <p className="text-xs uppercase tracking-wide text-slate-500">Principal</p>
+                                <p className="text-xs uppercase tracking-wide text-slate-500">
+                                    Pendientes
+                                </p>
+                                <p className="mt-2 text-3xl font-bold">{pendingImages.length}</p>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                <p className="text-xs uppercase tracking-wide text-slate-500">
+                                    Tamaño pendiente
+                                </p>
+                                <p className="mt-2 text-3xl font-bold">{formatBytes(totalPendingSize)}</p>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                                <p className="text-xs uppercase tracking-wide text-slate-500">
+                                    Principal actual
+                                </p>
                                 <p className="mt-2 truncate text-base font-semibold text-slate-100">
-                                    {primaryImage ? primaryImage.file.name : "Sin definir"}
+                                    {primaryImage ? `Imagen #${primaryImage.id}` : "Sin definir"}
                                 </p>
                             </div>
                         </div>
@@ -370,38 +423,82 @@ export default function ProductImagesPage() {
 
                 <section className="space-y-4">
                     <div>
-                        <h2 className="text-xl font-semibold">Preview de imágenes</h2>
+                        <h2 className="text-xl font-semibold">Pendientes de subida</h2>
                         <p className="text-sm text-slate-400">
-                            Ahora también podés ajustar el orden con los botones subir y bajar.
+                            Estas imágenes todavía no existen en la base de datos.
                         </p>
                     </div>
 
-                    {selectedImages.length === 0 ? (
-                        <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-16 text-center">
-                            <div className="mx-auto max-w-md space-y-3">
-                                <div className="inline-flex rounded-full border border-slate-800 bg-slate-900 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                                    Sin imágenes
-                                </div>
-                                <h3 className="text-xl font-semibold text-slate-100">
-                                    Todavía no seleccionaste imágenes
-                                </h3>
-                                <p className="text-sm leading-6 text-slate-400">
-                                    Cuando agregues archivos, acá vas a ver el preview, cuál es la
-                                    imagen principal y el orden actual de cada una.
-                                </p>
-                            </div>
+                    {pendingImages.length === 0 ? (
+                        <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-12 text-center text-slate-400">
+                            No hay imágenes pendientes.
                         </div>
                     ) : (
                         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                            {selectedImages.map((image, index) => (
+                            {pendingImages.map((image) => (
+                                <article
+                                    key={image.id}
+                                    className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-lg shadow-black/20"
+                                >
+                                    <div className="aspect-[4/3] bg-slate-950">
+                                        <img
+                                            src={image.previewUrl}
+                                            alt={image.file.name}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-4 p-4">
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-slate-100">
+                                                {image.file.name}
+                                            </p>
+                                            <p className="mt-1 text-xs text-slate-400">
+                                                {formatBytes(image.file.size)} · {image.file.type || "tipo desconocido"}
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemovePendingImage(image.id)}
+                                            className="rounded-lg border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
+                                        >
+                                            Quitar de la selección
+                                        </button>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                <section className="space-y-4">
+                    <div>
+                        <h2 className="text-xl font-semibold">Imágenes guardadas</h2>
+                        <p className="text-sm text-slate-400">
+                            Estas imágenes ya están subidas y asociadas al producto.
+                        </p>
+                    </div>
+
+                    {isLoading ? (
+                        <div className="rounded-3xl border border-slate-800 bg-slate-900/40 px-6 py-12 text-center text-slate-400">
+                            Cargando imágenes...
+                        </div>
+                    ) : images.length === 0 ? (
+                        <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-12 text-center text-slate-400">
+                            Este producto todavía no tiene imágenes guardadas.
+                        </div>
+                    ) : (
+                        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                            {images.map((image, index) => (
                                 <article
                                     key={image.id}
                                     className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:border-slate-700"
                                 >
                                     <div className="relative aspect-[4/3] bg-slate-950">
                                         <img
-                                            src={image.previewUrl}
-                                            alt={image.file.name}
+                                            src={image.imageUrl}
+                                            alt={image.altText ?? `Imagen ${image.id}`}
                                             className="h-full w-full object-cover"
                                         />
 
@@ -421,10 +518,10 @@ export default function ProductImagesPage() {
                                     <div className="space-y-4 p-4">
                                         <div className="min-w-0">
                                             <p className="truncate text-sm font-semibold text-slate-100">
-                                                {image.file.name}
+                                                public_id: {image.publicId}
                                             </p>
                                             <p className="mt-1 text-xs text-slate-400">
-                                                {formatBytes(image.file.size)} · {image.file.type || "tipo desconocido"}
+                                                {image.width ?? "?"} × {image.height ?? "?"}
                                             </p>
                                         </div>
 
@@ -441,7 +538,7 @@ export default function ProductImagesPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => handleMoveDown(index)}
-                                                disabled={index === selectedImages.length - 1}
+                                                disabled={index === images.length - 1}
                                                 className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                                 Bajar
@@ -458,7 +555,7 @@ export default function ProductImagesPage() {
 
                                             <button
                                                 type="button"
-                                                onClick={() => handleRemoveImage(image.id)}
+                                                onClick={() => handleDeleteImage(image.id)}
                                                 className="rounded-lg border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10"
                                             >
                                                 Eliminar
@@ -472,5 +569,21 @@ export default function ProductImagesPage() {
                 </section>
             </div>
         </main>
+    );
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+    if (error instanceof Error && error.message.trim()) {
+        return error.message;
+    }
+
+    return fallback;
+}
+
+export default function ProductImagesPage() {
+    return (
+        <RequireRole role="ADMIN">
+            <ProductImagesPageContent />
+        </RequireRole>
     );
 }

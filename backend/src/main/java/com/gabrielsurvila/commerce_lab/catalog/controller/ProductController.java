@@ -3,6 +3,7 @@ package com.gabrielsurvila.commerce_lab.catalog.controller;
 
 import com.gabrielsurvila.commerce_lab.catalog.dto.CreateProductRequest;
 import com.gabrielsurvila.commerce_lab.catalog.dto.ProductResponse;
+import com.gabrielsurvila.commerce_lab.catalog.dto.UpdateProductRequest;
 import com.gabrielsurvila.commerce_lab.catalog.service.ProductService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,11 @@ public class ProductController {
     @ResponseStatus(HttpStatus.CREATED)
     public ProductResponse create(@RequestBody CreateProductRequest request) {
         return productService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    public ProductResponse update(@PathVariable Long id, @RequestBody UpdateProductRequest request) {
+        return productService.update(id, request);
     }
 
     @GetMapping

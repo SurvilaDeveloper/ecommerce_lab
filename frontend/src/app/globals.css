@@ -24,3 +24,36 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.input {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgb(51 65 85);
+  background: rgb(2 6 23);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: rgb(241 245 249);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  border-color: rgb(14 165 233);
+}
+
+.textarea {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgb(51 65 85);
+  background: rgb(2 6 23);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: rgb(241 245 249);
+  outline: none;
+  transition: border-color 0.2s ease;
+  resize: vertical;
+}
+
+.textarea:focus {
+  border-color: rgb(14 165 233);
+}
