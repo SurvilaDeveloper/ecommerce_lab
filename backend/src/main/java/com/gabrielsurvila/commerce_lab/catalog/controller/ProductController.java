@@ -2,6 +2,7 @@
 package com.gabrielsurvila.commerce_lab.catalog.controller;
 
 import com.gabrielsurvila.commerce_lab.catalog.dto.CreateProductRequest;
+import com.gabrielsurvila.commerce_lab.catalog.dto.ProductPageResponse;
 import com.gabrielsurvila.commerce_lab.catalog.dto.ProductResponse;
 import com.gabrielsurvila.commerce_lab.catalog.dto.UpdateProductRequest;
 import com.gabrielsurvila.commerce_lab.catalog.service.ProductService;
@@ -32,8 +33,18 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<ProductResponse> findAll() {
-        return productService.findAll();
+    public ProductPageResponse findAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String stock,
+            @RequestParam(required = false) Boolean featured,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "NAME") String sortField,
+            @RequestParam(defaultValue = "ASC") String sortDirection) {
+        return productService.findAll(search, categoryId, status, stock, featured, page, size, sortField,
+                sortDirection);
     }
 
     @GetMapping("/{id}")

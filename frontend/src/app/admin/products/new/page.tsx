@@ -5,30 +5,16 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { RequireRole } from "@/components/auth/RequireRole";
 import { createProduct } from "@/lib/products";
-
-function slugify(value: string) {
-    return value
-        .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .replace(/[\s_-]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-}
-
-function parseOptionalNumber(value: string) {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : NaN;
-}
+import { parseOptionalNumber, slugify } from "@/lib/admin-product-form";
+import AdminCategorySelectField from "@/components/admin/AdminCategorySelectField";
 
 function CreateProductPageContent() {
     const router = useRouter();
 
-    const [categoryId, setCategoryId] = useState("1");
+    const [categoriesLoading, setCategoriesLoading] = useState(true);
+    const [hasCategories, setHasCategories] = useState(false);
+
+    const [categoryId, setCategoryId] = useState("");
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");
     const [sku, setSku] = useState("");
@@ -65,7 +51,7 @@ function CreateProductPageContent() {
         const parsedLowStockThreshold = Number(lowStockThreshold);
 
         if (!Number.isInteger(parsedCategoryId) || parsedCategoryId <= 0) {
-            setErrorMessage("Category ID debe ser mayor que cero.");
+            setErrorMessage("Tenés que seleccionar una categoría válida.");
             setIsSubmitting(false);
             return;
         }
@@ -161,16 +147,14 @@ function CreateProductPageContent() {
                     className="mt-8 space-y-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20"
                 >
                     <section className="grid gap-5 md:grid-cols-2">
-                        <Field label="Category ID">
-                            <input
-                                type="number"
-                                min="1"
-                                value={categoryId}
-                                onChange={(event) => setCategoryId(event.target.value)}
-                                className="input"
-                                required
-                            />
-                        </Field>
+                        <AdminCategorySelectField
+                            value={categoryId}
+                            onChange={setCategoryId}
+                            onLoadingChange={setCategoriesLoading}
+                            onAvailabilityChange={setHasCategories}
+                            helperText="Si falta una categoría, podés crearla acá mismo."
+                            modalDescription="Creá una categoría sin salir del flujo de alta de producto."
+                        />
 
                         <Field label="SKU">
                             <input
@@ -360,7 +344,7 @@ function CreateProductPageContent() {
                     <div className="flex flex-wrap gap-3">
                         <button
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || categoriesLoading || !hasCategories}
                             className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {isSubmitting ? "Creando producto..." : "Crear producto"}

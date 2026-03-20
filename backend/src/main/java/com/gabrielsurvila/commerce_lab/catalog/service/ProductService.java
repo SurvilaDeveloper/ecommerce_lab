@@ -4,17 +4,29 @@ package com.gabrielsurvila.commerce_lab.catalog.service;
 import com.gabrielsurvila.commerce_lab.catalog.dto.CreateProductRequest;
 import com.gabrielsurvila.commerce_lab.catalog.dto.ProductResponse;
 import com.gabrielsurvila.commerce_lab.catalog.dto.UpdateProductRequest;
+import com.gabrielsurvila.commerce_lab.catalog.dto.ProductListStatsResponse;
+import com.gabrielsurvila.commerce_lab.catalog.dto.ProductPageResponse;
 import com.gabrielsurvila.commerce_lab.catalog.entity.Category;
 import com.gabrielsurvila.commerce_lab.catalog.entity.Product;
 import com.gabrielsurvila.commerce_lab.catalog.entity.ProductImage;
 import com.gabrielsurvila.commerce_lab.catalog.repository.CategoryRepository;
 import com.gabrielsurvila.commerce_lab.catalog.repository.ProductImageRepository;
 import com.gabrielsurvila.commerce_lab.catalog.repository.ProductRepository;
+//import com.gabrielsurvila.commerce_lab.common.dto.PageResponse;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -201,11 +213,38 @@ public class ProductService {
         return toResponse(saved);
     }
 
-    public List<ProductResponse> findAll() {
-        return productRepository.findAllWithCategoryOrderByNameAsc()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    public ProductPageResponse findAll(
+            String search,
+            Long categoryId,
+            String status,
+            String stock,
+            Boolean featured,
+            int page,
+            int size,
+            String sortField,
+            String sortDirection) {
+
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = normalizePageSize(size);
+
+        Specification<Product> specification = buildSpecification(
+                normalizeOptionalText(search),
+                categoryId,
+                normalizeOptionalText(status),
+                normalizeOptionalText(stock),
+                featured);
+
+        Pageable pageable = PageRequest.of(
+                normalizedPage,
+                normalizedSize,
+                buildSort(sortField, sortDirection));
+
+        Page<ProductResponse> responsePage = productRepository.findAll(specification, pageable)
+                .map(this::toResponse);
+
+        ProductListStatsResponse stats = buildStats(specification);
+
+        return ProductPageResponse.from(responsePage, stats);
     }
 
     public ProductResponse findById(Long id) {
@@ -244,6 +283,104 @@ public class ProductService {
                 .toList();
     }
 
+    private Specification<Product> buildSpecification(
+            String search,
+            Long categoryId,
+            String status,
+            String stock,
+            Boolean featured) {
+
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            Join<Object, Object> categoryJoin = root.join("category", JoinType.INNER);
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (search != null && !search.isBlank()) {
+                String likeValue = "%" + search.trim().toLowerCase(Locale.ROOT) + "%";
+
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("name")), likeValue),
+                        cb.like(cb.lower(root.get("sku")), likeValue),
+                        cb.like(cb.lower(root.get("slug")), likeValue),
+                        cb.like(cb.lower(categoryJoin.get("name")), likeValue),
+                        cb.like(cb.lower(cb.coalesce(root.get("shortDescription"), "")), likeValue)));
+            }
+
+            if (categoryId != null) {
+                if (categoryId <= 0) {
+                    throw new IllegalArgumentException("Category id must be greater than zero");
+                }
+
+                predicates.add(cb.equal(categoryJoin.get("id"), categoryId));
+            }
+
+            if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+                if ("ACTIVE".equalsIgnoreCase(status)) {
+                    predicates.add(cb.isTrue(root.get("isActive")));
+                } else if ("INACTIVE".equalsIgnoreCase(status)) {
+                    predicates.add(cb.isFalse(root.get("isActive")));
+                } else {
+                    throw new IllegalArgumentException("Invalid status filter");
+                }
+            }
+
+            if (stock != null && !stock.isBlank() && !"ALL".equalsIgnoreCase(stock)) {
+                switch (stock.toUpperCase(Locale.ROOT)) {
+                    case "IN_STOCK" -> predicates.add(cb.greaterThan(root.get("stock"), 0));
+                    case "OUT_OF_STOCK" -> predicates.add(cb.lessThanOrEqualTo(root.get("stock"), 0));
+                    case "LOW_STOCK" -> predicates.add(cb.and(
+                            cb.greaterThan(root.get("stock"), 0),
+                            cb.lessThanOrEqualTo(root.get("stock"), root.get("lowStockThreshold"))));
+                    default -> throw new IllegalArgumentException("Invalid stock filter");
+                }
+            }
+
+            if (featured != null && featured) {
+                predicates.add(cb.isTrue(root.get("isFeatured")));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private ProductListStatsResponse buildStats(Specification<Product> baseSpecification) {
+        long totalCount = productRepository.count(baseSpecification);
+        long activeCount = productRepository.count(baseSpecification.and(isActiveSpecification()));
+        long lowStockCount = productRepository.count(baseSpecification.and(isLowStockSpecification()));
+        long outOfStockCount = productRepository.count(baseSpecification.and(isOutOfStockSpecification()));
+
+        return new ProductListStatsResponse(
+                totalCount,
+                activeCount,
+                lowStockCount,
+                outOfStockCount);
+    }
+
+    private Sort buildSort(String sortField, String sortDirection) {
+        String normalizedField = sortField == null ? "NAME" : sortField.trim().toUpperCase(Locale.ROOT);
+        String normalizedDirection = sortDirection == null ? "ASC" : sortDirection.trim().toUpperCase(Locale.ROOT);
+
+        Sort.Direction direction = "DESC".equals(normalizedDirection)
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+
+        return switch (normalizedField) {
+            case "NAME" -> Sort.by(direction, "name").and(Sort.by(Sort.Direction.ASC, "id"));
+            case "PRICE" -> Sort.by(direction, "price").and(Sort.by(Sort.Direction.ASC, "id"));
+            case "STOCK" -> Sort.by(direction, "stock").and(Sort.by(Sort.Direction.ASC, "id"));
+            default -> throw new IllegalArgumentException("Invalid sort field");
+        };
+    }
+
+    private int normalizePageSize(int size) {
+        if (size <= 0) {
+            return 10;
+        }
+
+        return Math.min(size, 100);
+    }
+
     private ProductResponse toResponse(Product product) {
         ProductImage primaryImage = productImageRepository.findFirstByProductAndIsPrimaryTrue(product)
                 .orElseGet(
@@ -273,6 +410,20 @@ public class ProductService {
                 primaryImageAltText,
                 product.getCreatedAt(),
                 product.getUpdatedAt());
+    }
+
+    private Specification<Product> isActiveSpecification() {
+        return (root, query, cb) -> cb.isTrue(root.get("isActive"));
+    }
+
+    private Specification<Product> isLowStockSpecification() {
+        return (root, query, cb) -> cb.and(
+                cb.greaterThan(root.get("stock"), 0),
+                cb.lessThanOrEqualTo(root.get("stock"), root.get("lowStockThreshold")));
+    }
+
+    private Specification<Product> isOutOfStockSpecification() {
+        return (root, query, cb) -> cb.lessThanOrEqualTo(root.get("stock"), 0);
     }
 
     private String normalizeRequiredText(String value, String errorMessage) {

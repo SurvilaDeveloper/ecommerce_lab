@@ -56,6 +56,75 @@ export type ProductImageResponse = {
     createdAt: string;
 };
 
+export type ProductListStatsResponse = {
+    totalCount: number;
+    activeCount: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+};
+
+export type ProductPageResponse = {
+    content: ProductResponse[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+    first: boolean;
+    last: boolean;
+    stats: ProductListStatsResponse;
+};
+
+export type ProductStatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
+export type ProductStockFilter = "ALL" | "IN_STOCK" | "OUT_OF_STOCK" | "LOW_STOCK";
+export type ProductSortField = "NAME" | "PRICE" | "STOCK";
+export type ProductSortDirection = "ASC" | "DESC";
+
+export type GetProductsParams = {
+    search?: string;
+    categoryId?: number | null;
+    status?: ProductStatusFilter;
+    stock?: ProductStockFilter;
+    featured?: boolean;
+    page?: number;
+    size?: number;
+    sortField?: ProductSortField;
+    sortDirection?: ProductSortDirection;
+};
+
+function buildProductsQuery(params: GetProductsParams = {}) {
+    const searchParams = new URLSearchParams();
+
+    if (params.search?.trim()) {
+        searchParams.set("search", params.search.trim());
+    }
+
+    if (params.categoryId != null) {
+        searchParams.set("categoryId", String(params.categoryId));
+    }
+
+    if (params.status && params.status !== "ALL") {
+        searchParams.set("status", params.status);
+    }
+
+    if (params.stock && params.stock !== "ALL") {
+        searchParams.set("stock", params.stock);
+    }
+
+    if (params.featured) {
+        searchParams.set("featured", "true");
+    }
+
+    searchParams.set("page", String(params.page ?? 0));
+    searchParams.set("size", String(params.size ?? 10));
+    searchParams.set("sortField", params.sortField ?? "NAME");
+    searchParams.set("sortDirection", params.sortDirection ?? "ASC");
+
+    const query = searchParams.toString();
+    return query ? `/api/products?${query}` : "/api/products";
+}
+
 export async function createProduct(payload: CreateProductRequest) {
     return apiFetchJson<ProductResponse>("/api/products", {
         method: "POST",
@@ -70,8 +139,8 @@ export async function updateProduct(productId: number, payload: UpdateProductReq
     });
 }
 
-export async function getProducts() {
-    return apiFetchJson<ProductResponse[]>("/api/products", {
+export async function getProducts(params: GetProductsParams = {}) {
+    return apiFetchJson<ProductPageResponse>(buildProductsQuery(params), {
         method: "GET",
     });
 }

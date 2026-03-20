@@ -91,6 +91,12 @@ export function Navbar() {
                                 >
                                     Órdenes
                                 </Link>
+                                <Link
+                                    href="/admin/categories"
+                                    className="text-sm font-medium text-slate-300 transition hover:text-white"
+                                >
+                                    Categorias
+                                </Link>
 
                             </>
                         )}
@@ -210,6 +216,12 @@ export function Navbar() {
                                 className="text-sm font-medium text-slate-300 transition hover:text-white"
                             >
                                 Órdenes
+                            </Link>
+                            <Link
+                                href="/admin/categories"
+                                className="text-sm font-medium text-slate-300 transition hover:text-white"
+                            >
+                                Categorias
                             </Link>
                         </>
                     )}
