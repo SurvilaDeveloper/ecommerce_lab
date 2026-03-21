@@ -6,50 +6,71 @@ import { useEffect, useMemo, useState } from "react";
 import { getCategories, type CategoryResponse } from "@/lib/categories";
 import {
     getProducts,
+    type ProductPageResponse,
     type ProductResponse,
 } from "@/lib/products";
-
 import { formatMoney } from "@/lib/format";
 
-/*function formatMoney(value: number, currency: string) {
-    try {
-        return new Intl.NumberFormat("es-AR", {
-            style: "currency",
-            currency,
-            maximumFractionDigits: 2,
-        }).format(value);
-    } catch {
-        return `${currency} ${value}`;
-    }
-}*/
-
 export default function ProductsCatalogPage() {
-    const [products, setProducts] = useState<ProductResponse[]>([]);
+    const [pageData, setPageData] = useState<ProductPageResponse | null>(null);
     const [categories, setCategories] = useState<CategoryResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState("");
 
+    const [searchInput, setSearchInput] = useState("");
     const [search, setSearch] = useState("");
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
     const [featuredOnly, setFeaturedOnly] = useState(false);
     const [inStockOnly, setInStockOnly] = useState(false);
 
     useEffect(() => {
-        loadCatalog();
+        void loadCategories();
     }, []);
+
+    useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            setSearch(searchInput.trim());
+        }, 300);
+
+        return () => window.clearTimeout(timeout);
+    }, [searchInput]);
+
+    useEffect(() => {
+        void loadCatalog();
+    }, [search, selectedCategoryId, featuredOnly, inStockOnly]);
+
+    async function loadCategories() {
+        try {
+            const categoriesData = await getCategories();
+            setCategories(categoriesData.filter((category) => category.isActive));
+        } catch (error) {
+            if (error instanceof Error && error.message.trim()) {
+                setErrorMessage(error.message);
+            } else {
+                setErrorMessage("No se pudieron cargar las categorías.");
+            }
+        }
+    }
 
     async function loadCatalog() {
         setIsLoading(true);
         setErrorMessage("");
 
         try {
-            const [productsData, categoriesData] = await Promise.all([
-                getProducts(),
-                getCategories(),
-            ]);
+            const productsData = await getProducts({
+                search,
+                categoryId:
+                    selectedCategoryId === "all" ? null : Number(selectedCategoryId),
+                featured: featuredOnly,
+                status: "ACTIVE",
+                stock: inStockOnly ? "IN_STOCK" : "ALL",
+                sortField: "NAME",
+                sortDirection: "ASC",
+                page: 0,
+                size: 100,
+            });
 
-            setProducts(productsData);
-            setCategories(categoriesData.filter((category) => category.isActive));
+            setPageData(productsData);
         } catch (error) {
             if (error instanceof Error && error.message.trim()) {
                 setErrorMessage(error.message);
@@ -61,27 +82,13 @@ export default function ProductsCatalogPage() {
         }
     }
 
-    const filteredProducts = useMemo(() => {
-        return products.filter((product) => {
-            if (!product.active) {
-                return false;
-            }
+    const products = pageData?.content ?? [];
 
-            const matchesSearch =
-                !search.trim() ||
-                product.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-                product.slug.toLowerCase().includes(search.trim().toLowerCase()) ||
-                product.sku.toLowerCase().includes(search.trim().toLowerCase());
-            const matchesCategory =
-                selectedCategoryId === "all" ||
-                product.categoryId === Number(selectedCategoryId);
-
-            const matchesFeatured = !featuredOnly || product.featured;
-            const matchesStock = !inStockOnly || product.stock > 0;
-
-            return matchesSearch && matchesCategory && matchesFeatured && matchesStock;
-        });
-    }, [products, search, selectedCategoryId, featuredOnly, inStockOnly]);
+    const resultLabel = useMemo(() => {
+        const count = pageData?.totalElements ?? 0;
+        return `${count} producto${count === 1 ? "" : "s"} encontrado${count === 1 ? "" : "s"
+            }`;
+    }, [pageData]);
 
     return (
         <main className="min-h-[calc(100vh-73px)] bg-slate-950 text-slate-100">
@@ -108,8 +115,8 @@ export default function ProductsCatalogPage() {
                             <span className="text-sm font-medium text-slate-200">Buscar</span>
                             <input
                                 type="text"
-                                value={search}
-                                onChange={(event) => setSearch(event.target.value)}
+                                value={searchInput}
+                                onChange={(event) => setSearchInput(event.target.value)}
                                 placeholder="Nombre, slug o SKU"
                                 className="input"
                             />
@@ -162,7 +169,7 @@ export default function ProductsCatalogPage() {
                         <div className="rounded-3xl border border-slate-800 bg-slate-900/60 px-6 py-12 text-center text-slate-400">
                             Cargando catálogo...
                         </div>
-                    ) : filteredProducts.length === 0 ? (
+                    ) : products.length === 0 ? (
                         <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-12 text-center">
                             <div className="mx-auto max-w-md space-y-3">
                                 <h2 className="text-xl font-semibold text-slate-100">
@@ -175,12 +182,10 @@ export default function ProductsCatalogPage() {
                         </div>
                     ) : (
                         <>
-                            <div className="mb-4 text-sm text-slate-400">
-                                {filteredProducts.length} producto{filteredProducts.length === 1 ? "" : "s"} encontrado{filteredProducts.length === 1 ? "" : "s"}
-                            </div>
+                            <div className="mb-4 text-sm text-slate-400">{resultLabel}</div>
 
                             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                                {filteredProducts.map((product) => (
+                                {products.map((product: ProductResponse) => (
                                     <article
                                         key={product.id}
                                         className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-slate-700"
@@ -233,11 +238,13 @@ export default function ProductsCatalogPage() {
 
                                                 <span
                                                     className={`rounded-full px-3 py-1 ${product.stock > 0
-                                                        ? "bg-emerald-500/15 text-emerald-300"
-                                                        : "bg-red-500/15 text-red-300"
+                                                            ? "bg-emerald-500/15 text-emerald-300"
+                                                            : "bg-red-500/15 text-red-300"
                                                         }`}
                                                 >
-                                                    {product.stock > 0 ? `Stock: ${product.stock}` : "Sin stock"}
+                                                    {product.stock > 0
+                                                        ? `Stock: ${product.stock}`
+                                                        : "Sin stock"}
                                                 </span>
                                             </div>
 
@@ -250,7 +257,10 @@ export default function ProductsCatalogPage() {
                                                     {product.compareAtPrice != null &&
                                                         product.compareAtPrice > product.price && (
                                                             <p className="text-sm text-slate-500 line-through">
-                                                                {formatMoney(product.compareAtPrice, product.currency)}
+                                                                {formatMoney(
+                                                                    product.compareAtPrice,
+                                                                    product.currency
+                                                                )}
                                                             </p>
                                                         )}
                                                 </div>

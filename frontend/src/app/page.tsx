@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { formatMoney } from "@/lib/format";
 import { getProducts, type ProductResponse } from "@/lib/products";
@@ -15,16 +15,37 @@ export default function HomePage() {
   const [productsError, setProductsError] = useState("");
 
   useEffect(() => {
-    loadFeaturedProducts();
+    void loadHomeProducts();
   }, []);
 
-  async function loadFeaturedProducts() {
+  async function loadHomeProducts() {
     setProductsLoading(true);
     setProductsError("");
 
     try {
-      const data = await getProducts();
-      setProducts(data);
+      const featuredPage = await getProducts({
+        featured: true,
+        status: "ACTIVE",
+        sortField: "NAME",
+        sortDirection: "ASC",
+        page: 0,
+        size: 6,
+      });
+
+      if (featuredPage.content.length > 0) {
+        setProducts(featuredPage.content);
+        return;
+      }
+
+      const fallbackPage = await getProducts({
+        status: "ACTIVE",
+        sortField: "NAME",
+        sortDirection: "ASC",
+        page: 0,
+        size: 6,
+      });
+
+      setProducts(fallbackPage.content);
     } catch (error) {
       if (error instanceof Error && error.message.trim()) {
         setProductsError(error.message);
@@ -36,18 +57,7 @@ export default function HomePage() {
     }
   }
 
-  const featuredProducts = useMemo(() => {
-    return products
-      .filter((product) => product.active && product.featured)
-      .slice(0, 6);
-  }, [products]);
-
-  const fallbackProducts = useMemo(() => {
-    if (featuredProducts.length > 0) return [];
-    return products.filter((product) => product.active).slice(0, 6);
-  }, [products, featuredProducts]);
-
-  const homeProducts = featuredProducts.length > 0 ? featuredProducts : fallbackProducts;
+  const hasFeaturedProducts = products.some((product) => product.featured);
 
   return (
     <main className="bg-slate-950 text-slate-100">
@@ -151,10 +161,10 @@ export default function HomePage() {
               Productos
             </p>
             <h2 className="text-3xl font-bold tracking-tight text-white">
-              {featuredProducts.length > 0 ? "Productos destacados" : "Productos recientes"}
+              {hasFeaturedProducts ? "Productos destacados" : "Productos recientes"}
             </h2>
             <p className="max-w-2xl text-sm leading-6 text-slate-400">
-              {featuredProducts.length > 0
+              {hasFeaturedProducts
                 ? "Una selección de productos marcados como destacados desde el panel admin."
                 : "Todavía no hay destacados, así que mostramos algunos productos activos del catálogo."}
             </p>
@@ -178,7 +188,7 @@ export default function HomePage() {
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 px-6 py-12 text-center text-slate-400">
             Cargando productos...
           </div>
-        ) : homeProducts.length === 0 ? (
+        ) : products.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-12 text-center">
             <div className="mx-auto max-w-md space-y-3">
               <h3 className="text-xl font-semibold text-slate-100">
@@ -192,7 +202,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {homeProducts.map((product) => (
+            {products.map((product) => (
               <article
                 key={product.id}
                 className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:border-slate-700"
