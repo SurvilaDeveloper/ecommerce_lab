@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/catalog/dto/CategoryResponse.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/catalog/dto/CategoryResponse.java
 package com.gabrielsurvila.commerce_lab.catalog.dto;
 
 import java.time.LocalDateTime;

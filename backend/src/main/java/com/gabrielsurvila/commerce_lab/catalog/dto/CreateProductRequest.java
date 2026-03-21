@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/catalog/dto/CreateProductRequest.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/catalog/dto/CreateProductRequest.java
 package com.gabrielsurvila.commerce_lab.catalog.dto;
 
 import java.math.BigDecimal;

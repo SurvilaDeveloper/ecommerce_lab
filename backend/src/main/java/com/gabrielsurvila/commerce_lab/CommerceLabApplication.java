@@ -1,3 +1,4 @@
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/CommerceLabApplication.java
 package com.gabrielsurvila.commerce_lab;
 
 import org.springframework.boot.SpringApplication;

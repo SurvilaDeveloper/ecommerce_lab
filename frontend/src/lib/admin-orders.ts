@@ -11,6 +11,17 @@ export type AdminOrderItemResponse = {
     lineTotal: number;
 };
 
+export type AdminOrderAddressResponse = {
+    id: number;
+    recipientName: string;
+    line1: string;
+    line2: string | null;
+    city: string;
+    state: string | null;
+    postalCode: string;
+    countryCode: string;
+};
+
 export type AdminOrderResponse = {
     id: number;
     userId: number;
@@ -22,8 +33,16 @@ export type AdminOrderResponse = {
     fulfillmentStatus: string;
     currency: string;
     subtotal: number;
+    discountTotal: number;
+    shippingTotal: number;
+    taxTotal: number;
     grandTotal: number;
-    placedAt: string;
+    deliveryMethod: "PICKUP" | "DELIVERY";
+    recipientName: string;
+    phone: string;
+    notes: string | null;
+    placedAt: string | null;
+    shippingAddress: AdminOrderAddressResponse | null;
     items: AdminOrderItemResponse[];
 };
 

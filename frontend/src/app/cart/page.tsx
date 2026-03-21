@@ -3,7 +3,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { RequireRole } from "@/components/auth/RequireRole";
 import {
     clearCart,
     getCart,
@@ -13,7 +12,6 @@ import {
 } from "@/lib/cart";
 import { formatMoney } from "@/lib/format";
 import { useCart } from "@/components/cart/CartProvider";
-import { checkoutOrder } from "@/lib/orders";
 import { useRouter } from "next/navigation";
 
 function CartPageContent() {
@@ -25,7 +23,6 @@ function CartPageContent() {
     const [isClearing, setIsClearing] = useState(false);
     const { refreshCart } = useCart();
     const router = useRouter();
-    const [isCheckingOut, setIsCheckingOut] = useState(false);
 
     useEffect(() => {
         loadCart();
@@ -115,24 +112,10 @@ function CartPageContent() {
         }
     }
 
-    async function handleCheckout() {
-        setIsCheckingOut(true);
+    function handleCheckout() {
         setMessage("");
         setErrorMessage("");
-
-        try {
-            const order = await checkoutOrder();
-            await refreshCart();
-            router.push(`/checkout/success?orderNumber=${encodeURIComponent(order.orderNumber)}`);
-        } catch (error) {
-            if (error instanceof Error && error.message.trim()) {
-                setErrorMessage(error.message);
-            } else {
-                setErrorMessage("No se pudo finalizar la compra.");
-            }
-        } finally {
-            setIsCheckingOut(false);
-        }
+        router.push("/checkout");
     }
 
     const items = useMemo(() => cart?.items ?? [], [cart]);
@@ -321,10 +304,9 @@ function CartPageContent() {
                                 <button
                                     type="button"
                                     onClick={handleCheckout}
-                                    disabled={isCheckingOut}
-                                    className="w-full rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="w-full rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
                                 >
-                                    {isCheckingOut ? "Procesando compra..." : "Finalizar compra"}
+                                    Continuar al checkout
                                 </button>
 
                                 <button
@@ -338,7 +320,7 @@ function CartPageContent() {
                             </div>
 
                             <p className="mt-4 text-xs leading-5 text-slate-500">
-                                El checkout todavía no está implementado, pero el carrito ya es real y persistente.
+                                En el siguiente paso vas a completar los datos de entrega antes de confirmar la compra.
                             </p>
                         </aside>
                     </div>

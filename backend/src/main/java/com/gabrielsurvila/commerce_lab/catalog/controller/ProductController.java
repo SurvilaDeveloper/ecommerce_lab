@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/catalog/controller/ProductController.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/catalog/controller/ProductController.java
 package com.gabrielsurvila.commerce_lab.catalog.controller;
 
 import com.gabrielsurvila.commerce_lab.catalog.dto.CreateProductRequest;

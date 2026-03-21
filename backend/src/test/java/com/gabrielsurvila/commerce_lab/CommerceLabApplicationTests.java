@@ -1,3 +1,4 @@
+//backend/src/test/java/com/gabrielsurvila/commerce_lab/CommerceLabApplicationTests.java
 package com.gabrielsurvila.commerce_lab;
 
 import org.junit.jupiter.api.Test;

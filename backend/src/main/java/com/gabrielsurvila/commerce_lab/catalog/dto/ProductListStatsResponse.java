@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/catalog/dto/ProductListStatsResponse.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/catalog/dto/ProductListStatsResponse.java
 package com.gabrielsurvila.commerce_lab.catalog.dto;
 
 public class ProductListStatsResponse {

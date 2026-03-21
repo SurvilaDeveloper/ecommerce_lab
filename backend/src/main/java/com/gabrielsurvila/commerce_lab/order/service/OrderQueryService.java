@@ -1,11 +1,13 @@
 //backend/src/main/java/com/gabrielsurvila/commerce_lab/order/service/OrderQueryService.java
 package com.gabrielsurvila.commerce_lab.order.service;
 
+import com.gabrielsurvila.commerce_lab.order.dto.OrderAddressResponse;
 import com.gabrielsurvila.commerce_lab.order.dto.OrderItemResponse;
 import com.gabrielsurvila.commerce_lab.order.dto.OrderResponse;
 import com.gabrielsurvila.commerce_lab.order.entity.CustomerOrder;
 import com.gabrielsurvila.commerce_lab.order.repository.CustomerOrderRepository;
 import com.gabrielsurvila.commerce_lab.order.repository.OrderItemRepository;
+import com.gabrielsurvila.commerce_lab.user.entity.Address;
 import com.gabrielsurvila.commerce_lab.user.entity.UserAccount;
 import com.gabrielsurvila.commerce_lab.user.repository.UserAccountRepository;
 import org.springframework.stereotype.Service;
@@ -78,6 +80,22 @@ public class OrderQueryService {
                         item.getLineTotal()))
                 .toList();
 
+        OrderAddressResponse shippingAddress = null;
+
+        if (order.getShippingAddress() != null) {
+            Address address = order.getShippingAddress();
+
+            shippingAddress = new OrderAddressResponse(
+                    address.getId(),
+                    address.getRecipientName(),
+                    address.getLine1(),
+                    address.getLine2(),
+                    address.getCity(),
+                    address.getState(),
+                    address.getPostalCode(),
+                    address.getCountryCode());
+        }
+
         return new OrderResponse(
                 order.getId(),
                 order.getOrderNumber(),
@@ -86,8 +104,16 @@ public class OrderQueryService {
                 order.getFulfillmentStatus(),
                 order.getCurrency(),
                 order.getSubtotal(),
+                order.getDiscountTotal(),
+                order.getShippingTotal(),
+                order.getTaxTotal(),
                 order.getGrandTotal(),
+                order.getDeliveryMethod(),
+                order.getRecipientName(),
+                order.getPhone(),
+                order.getNotes(),
                 order.getPlacedAt(),
+                shippingAddress,
                 items);
     }
 }

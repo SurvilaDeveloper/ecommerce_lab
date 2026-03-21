@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/catalog/dto/CreateCategoryRequest.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/catalog/dto/CreateCategoryRequest.java
 package com.gabrielsurvila.commerce_lab.catalog.dto;
 
 public class CreateCategoryRequest {

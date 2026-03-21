@@ -129,6 +129,74 @@ export default function OrdersPage() {
                                         <span className="rounded-full bg-slate-950 px-3 py-1 text-xs text-slate-300">
                                             Entrega: {order.fulfillmentStatus}
                                         </span>
+                                        <span className="rounded-full bg-slate-950 px-3 py-1 text-xs text-slate-300">
+                                            Método:{" "}
+                                            {order.deliveryMethod === "DELIVERY"
+                                                ? "Envío"
+                                                : "Retiro"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                            Datos del pedido
+                                        </p>
+
+                                        <div className="mt-3 space-y-2 text-sm">
+                                            <p className="text-slate-200">
+                                                <span className="text-slate-400">Recibe:</span>{" "}
+                                                {order.recipientName}
+                                            </p>
+                                            <p className="text-slate-200">
+                                                <span className="text-slate-400">Teléfono:</span>{" "}
+                                                {order.phone}
+                                            </p>
+                                        </div>
+
+                                        {order.notes ? (
+                                            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
+                                                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                                    Notas
+                                                </p>
+                                                <p className="mt-2 text-sm leading-6 text-slate-300">
+                                                    {order.notes}
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                    </div>
+
+                                    <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                            Entrega
+                                        </p>
+
+                                        {order.shippingAddress ? (
+                                            <div className="mt-3 space-y-1 text-sm text-slate-300">
+                                                <p>{order.shippingAddress.recipientName}</p>
+                                                <p>
+                                                    {order.shippingAddress.line1}
+                                                    {order.shippingAddress.line2
+                                                        ? `, ${order.shippingAddress.line2}`
+                                                        : ""}
+                                                </p>
+                                                <p>
+                                                    {order.shippingAddress.city}
+                                                    {order.shippingAddress.state
+                                                        ? `, ${order.shippingAddress.state}`
+                                                        : ""}
+                                                </p>
+                                                <p>
+                                                    {order.shippingAddress.postalCode} ·{" "}
+                                                    {order.shippingAddress.countryCode}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <p className="mt-3 text-sm text-slate-300">
+                                                Retiro en local.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -169,10 +237,25 @@ export default function OrdersPage() {
                                     </div>
                                 </div>
 
-                                <div className="mt-5 flex items-center justify-end">
-                                    <p className="text-lg font-bold text-white">
-                                        Total: {formatMoney(order.grandTotal, order.currency)}
-                                    </p>
+                                <div className="mt-5 flex justify-end">
+                                    <div className="w-full max-w-sm space-y-2 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                        <div className="flex items-center justify-between text-sm text-slate-400">
+                                            <span>Subtotal</span>
+                                            <span>{formatMoney(order.subtotal, order.currency)}</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-sm text-slate-400">
+                                            <span>Envío</span>
+                                            <span>
+                                                {formatMoney(order.shippingTotal, order.currency)}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between border-t border-slate-800 pt-2 text-lg font-bold text-white">
+                                            <span>Total</span>
+                                            <span>{formatMoney(order.grandTotal, order.currency)}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </article>
                         ))}

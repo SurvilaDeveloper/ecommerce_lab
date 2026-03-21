@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/catalog/service/CategoryService.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/catalog/service/CategoryService.java
 package com.gabrielsurvila.commerce_lab.catalog.service;
 
 import com.gabrielsurvila.commerce_lab.catalog.dto.CategoryResponse;

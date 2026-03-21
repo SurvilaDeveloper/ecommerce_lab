@@ -3,55 +3,200 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getMyOrderById, type OrderResponse } from "@/lib/orders";
+import { formatMoney } from "@/lib/format";
 
 export default function CheckoutSuccessPage() {
     const searchParams = useSearchParams();
-    const orderNumber = searchParams.get("orderNumber");
+    const orderIdParam = searchParams.get("orderId");
+
+    const [order, setOrder] = useState<OrderResponse | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [errorMessage, setErrorMessage] = useState("");
+
+    useEffect(() => {
+        async function loadOrder() {
+            if (!orderIdParam) {
+                setErrorMessage("No se encontró la orden.");
+                setIsLoading(false);
+                return;
+            }
+
+            const orderId = Number(orderIdParam);
+
+            if (!Number.isFinite(orderId) || orderId <= 0) {
+                setErrorMessage("El identificador de la orden es inválido.");
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                const data = await getMyOrderById(orderId);
+                setOrder(data);
+            } catch (error) {
+                if (error instanceof Error && error.message.trim()) {
+                    setErrorMessage(error.message);
+                } else {
+                    setErrorMessage("No se pudo cargar la orden.");
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        loadOrder();
+    }, [orderIdParam]);
 
     return (
         <main className="min-h-[calc(100vh-73px)] bg-slate-950 text-slate-100">
             <div className="mx-auto flex w-full max-w-3xl px-6 py-16">
                 <div className="w-full rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-8 shadow-2xl shadow-black/20">
-                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-300">
-                        Compra confirmada
-                    </p>
+                    {isLoading ? (
+                        <p className="text-sm text-emerald-100/90">
+                            Cargando confirmación...
+                        </p>
+                    ) : errorMessage ? (
+                        <>
+                            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-red-300">
+                                Error
+                            </p>
 
-                    <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
-                        Tu orden fue creada correctamente
-                    </h1>
+                            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
+                                No se pudo cargar la orden
+                            </h1>
 
-                    <p className="mt-4 text-sm leading-7 text-emerald-100/90">
-                        {orderNumber
-                            ? `Número de orden: ${orderNumber}.`
-                            : "La orden fue registrada correctamente."}
-                    </p>
+                            <p className="mt-4 text-sm leading-7 text-red-100/90">
+                                {errorMessage}
+                            </p>
 
-                    <p className="mt-2 text-sm leading-7 text-emerald-100/90">
-                        En esta etapa el checkout es básico, pero ya crea la orden real,
-                        descuenta stock y vacía el carrito.
-                    </p>
+                            <div className="mt-8 flex flex-wrap gap-3">
+                                <Link
+                                    href="/orders"
+                                    className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
+                                >
+                                    Ver mis órdenes
+                                </Link>
+                                <Link
+                                    href="/products"
+                                    className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
+                                >
+                                    Seguir comprando
+                                </Link>
+                            </div>
+                        </>
+                    ) : order ? (
+                        <>
+                            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-300">
+                                Compra confirmada
+                            </p>
 
-                    <div className="mt-8 flex flex-wrap gap-3">
-                        <Link
-                            href="/orders"
-                            className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
-                        >
-                            Ver mis órdenes
-                        </Link>
-                        <Link
-                            href="/products"
-                            className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
-                        >
-                            Seguir comprando
-                        </Link>
+                            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
+                                Tu orden fue creada correctamente
+                            </h1>
 
-                        <Link
-                            href="/"
-                            className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
-                        >
-                            Volver al inicio
-                        </Link>
-                    </div>
+                            <div className="mt-6 grid gap-4 md:grid-cols-2">
+                                <div className="rounded-2xl border border-emerald-400/15 bg-slate-950/40 p-4">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                        Número de orden
+                                    </p>
+                                    <p className="mt-2 text-lg font-semibold text-white">
+                                        {order.orderNumber}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-2xl border border-emerald-400/15 bg-slate-950/40 p-4">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                        Total
+                                    </p>
+                                    <p className="mt-2 text-lg font-semibold text-white">
+                                        {formatMoney(order.grandTotal, order.currency)}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-2xl border border-emerald-400/15 bg-slate-950/40 p-4">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                        Entrega
+                                    </p>
+                                    <p className="mt-2 text-sm font-semibold text-white">
+                                        {order.deliveryMethod === "DELIVERY"
+                                            ? "Envío a domicilio"
+                                            : "Retiro en local"}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-2xl border border-emerald-400/15 bg-slate-950/40 p-4">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                        Estado
+                                    </p>
+                                    <p className="mt-2 text-sm font-semibold text-white">
+                                        {order.status}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {order.shippingAddress ? (
+                                <div className="mt-6 rounded-2xl border border-emerald-400/15 bg-slate-950/40 p-4">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                        Dirección de envío
+                                    </p>
+
+                                    <div className="mt-3 space-y-1 text-sm text-emerald-50/90">
+                                        <p>{order.shippingAddress.recipientName}</p>
+                                        <p>
+                                            {order.shippingAddress.line1}
+                                            {order.shippingAddress.line2
+                                                ? `, ${order.shippingAddress.line2}`
+                                                : ""}
+                                        </p>
+                                        <p>
+                                            {order.shippingAddress.city}
+                                            {order.shippingAddress.state
+                                                ? `, ${order.shippingAddress.state}`
+                                                : ""}
+                                        </p>
+                                        <p>
+                                            {order.shippingAddress.postalCode} ·{" "}
+                                            {order.shippingAddress.countryCode}
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            {order.notes ? (
+                                <div className="mt-6 rounded-2xl border border-emerald-400/15 bg-slate-950/40 p-4">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                                        Notas del pedido
+                                    </p>
+                                    <p className="mt-3 text-sm leading-7 text-emerald-50/90">
+                                        {order.notes}
+                                    </p>
+                                </div>
+                            ) : null}
+
+                            <div className="mt-8 flex flex-wrap gap-3">
+                                <Link
+                                    href="/orders"
+                                    className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
+                                >
+                                    Ver mis órdenes
+                                </Link>
+                                <Link
+                                    href="/products"
+                                    className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
+                                >
+                                    Seguir comprando
+                                </Link>
+
+                                <Link
+                                    href="/"
+                                    className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
+                                >
+                                    Volver al inicio
+                                </Link>
+                            </div>
+                        </>
+                    ) : null}
                 </div>
             </div>
         </main>

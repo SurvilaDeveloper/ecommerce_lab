@@ -23,7 +23,9 @@ export default function RootLayout({
           <CartProvider>
             <div className="min-h-screen bg-slate-950 text-slate-100">
               <Navbar />
-              {children}
+              <div className="pt-[73px]">
+                {children}
+              </div>
               <CartPreview />
             </div>
           </CartProvider>

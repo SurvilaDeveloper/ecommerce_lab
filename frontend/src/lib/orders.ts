@@ -11,6 +11,17 @@ export type OrderItemResponse = {
     lineTotal: number;
 };
 
+export type OrderAddressResponse = {
+    id: number;
+    recipientName: string;
+    line1: string;
+    line2: string | null;
+    city: string;
+    state: string | null;
+    postalCode: string;
+    countryCode: string;
+};
+
 export type OrderResponse = {
     id: number;
     orderNumber: string;
@@ -19,14 +30,40 @@ export type OrderResponse = {
     fulfillmentStatus: string;
     currency: string;
     subtotal: number;
+    discountTotal: number;
+    shippingTotal: number;
+    taxTotal: number;
     grandTotal: number;
-    placedAt: string;
+    deliveryMethod: "PICKUP" | "DELIVERY";
+    recipientName: string;
+    phone: string;
+    notes: string | null;
+    placedAt: string | null;
+    shippingAddress: OrderAddressResponse | null;
     items: OrderItemResponse[];
 };
 
-export async function checkoutOrder() {
+export type CheckoutAddressRequest = {
+    line1: string;
+    line2?: string;
+    city: string;
+    state?: string;
+    postalCode: string;
+    countryCode: string;
+};
+
+export type CheckoutRequest = {
+    deliveryMethod: "PICKUP" | "DELIVERY";
+    recipientName: string;
+    phone: string;
+    notes?: string;
+    shippingAddress?: CheckoutAddressRequest;
+};
+
+export async function checkoutOrder(payload: CheckoutRequest) {
     return apiFetchJson<OrderResponse>("/api/orders/checkout", {
         method: "POST",
+        json: payload,
     });
 }
 

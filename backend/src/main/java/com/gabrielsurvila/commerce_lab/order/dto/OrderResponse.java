@@ -1,4 +1,4 @@
-//backend/src/main/java/com/gabrielsurvila/commerce_lab/order/dto/OrderResponse.java
+// backend/src/main/java/com/gabrielsurvila/commerce_lab/order/dto/OrderResponse.java
 package com.gabrielsurvila.commerce_lab.order.dto;
 
 import java.math.BigDecimal;
@@ -14,8 +14,16 @@ public class OrderResponse {
     private final String fulfillmentStatus;
     private final String currency;
     private final BigDecimal subtotal;
+    private final BigDecimal discountTotal;
+    private final BigDecimal shippingTotal;
+    private final BigDecimal taxTotal;
     private final BigDecimal grandTotal;
+    private final String deliveryMethod;
+    private final String recipientName;
+    private final String phone;
+    private final String notes;
     private final LocalDateTime placedAt;
+    private final OrderAddressResponse shippingAddress;
     private final List<OrderItemResponse> items;
 
     public OrderResponse(
@@ -26,8 +34,16 @@ public class OrderResponse {
             String fulfillmentStatus,
             String currency,
             BigDecimal subtotal,
+            BigDecimal discountTotal,
+            BigDecimal shippingTotal,
+            BigDecimal taxTotal,
             BigDecimal grandTotal,
+            String deliveryMethod,
+            String recipientName,
+            String phone,
+            String notes,
             LocalDateTime placedAt,
+            OrderAddressResponse shippingAddress,
             List<OrderItemResponse> items) {
         this.id = id;
         this.orderNumber = orderNumber;
@@ -36,8 +52,16 @@ public class OrderResponse {
         this.fulfillmentStatus = fulfillmentStatus;
         this.currency = currency;
         this.subtotal = subtotal;
+        this.discountTotal = discountTotal;
+        this.shippingTotal = shippingTotal;
+        this.taxTotal = taxTotal;
         this.grandTotal = grandTotal;
+        this.deliveryMethod = deliveryMethod;
+        this.recipientName = recipientName;
+        this.phone = phone;
+        this.notes = notes;
         this.placedAt = placedAt;
+        this.shippingAddress = shippingAddress;
         this.items = items;
     }
 
@@ -69,12 +93,44 @@ public class OrderResponse {
         return subtotal;
     }
 
+    public BigDecimal getDiscountTotal() {
+        return discountTotal;
+    }
+
+    public BigDecimal getShippingTotal() {
+        return shippingTotal;
+    }
+
+    public BigDecimal getTaxTotal() {
+        return taxTotal;
+    }
+
     public BigDecimal getGrandTotal() {
         return grandTotal;
     }
 
+    public String getDeliveryMethod() {
+        return deliveryMethod;
+    }
+
+    public String getRecipientName() {
+        return recipientName;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
     public LocalDateTime getPlacedAt() {
         return placedAt;
+    }
+
+    public OrderAddressResponse getShippingAddress() {
+        return shippingAddress;
     }
 
     public List<OrderItemResponse> getItems() {

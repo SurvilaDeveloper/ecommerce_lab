@@ -85,7 +85,9 @@ function AdminOrdersPageContent() {
                                         <tr>
                                             <th className="px-4 py-4 font-medium">Orden</th>
                                             <th className="px-4 py-4 font-medium">Cliente</th>
+                                            <th className="px-4 py-4 font-medium">Contacto</th>
                                             <th className="px-4 py-4 font-medium">Fecha</th>
+                                            <th className="px-4 py-4 font-medium">Método</th>
                                             <th className="px-4 py-4 font-medium">Estado</th>
                                             <th className="px-4 py-4 font-medium">Pago</th>
                                             <th className="px-4 py-4 font-medium">Entrega</th>
@@ -119,8 +121,25 @@ function AdminOrdersPageContent() {
                                                     </div>
                                                 </td>
 
+                                                <td className="px-4 py-4">
+                                                    <div className="space-y-1">
+                                                        <p className="text-slate-300">
+                                                            {order.recipientName}
+                                                        </p>
+                                                        <p className="text-xs text-slate-400">
+                                                            {order.phone}
+                                                        </p>
+                                                    </div>
+                                                </td>
+
                                                 <td className="px-4 py-4 text-slate-300">
                                                     {formatDate(order.placedAt)}
+                                                </td>
+
+                                                <td className="px-4 py-4 text-slate-300">
+                                                    {order.deliveryMethod === "DELIVERY"
+                                                        ? "Envío"
+                                                        : "Retiro"}
                                                 </td>
 
                                                 <td className="px-4 py-4 text-slate-300">

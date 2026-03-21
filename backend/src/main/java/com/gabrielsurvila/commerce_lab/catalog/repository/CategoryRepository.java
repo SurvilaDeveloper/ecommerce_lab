@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/catalog/repository/CategoryRepository.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/catalog/repository/CategoryRepository.java
 package com.gabrielsurvila.commerce_lab.catalog.repository;
 
 import com.gabrielsurvila.commerce_lab.catalog.entity.Category;

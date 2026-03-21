@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/common/dto/PageResponse.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/common/dto/PageResponse.java
 package com.gabrielsurvila.commerce_lab.common.dto;
 
 import org.springframework.data.domain.Page;

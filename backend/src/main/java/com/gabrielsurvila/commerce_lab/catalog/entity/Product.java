@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/catalog/entity/Product.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/catalog/entity/Product.java
 package com.gabrielsurvila.commerce_lab.catalog.entity;
 
 import jakarta.persistence.*;

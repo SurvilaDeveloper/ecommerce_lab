@@ -1,4 +1,4 @@
-//src/main/java/com/gabrielsurvila/commerce_lab/shared/exception/GlobalExceptionHandler.java
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/shared/exception/GlobalExceptionHandler.java
 package com.gabrielsurvila.commerce_lab.shared.exception;
 
 import org.springframework.http.HttpStatus;

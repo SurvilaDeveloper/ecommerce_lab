@@ -163,82 +163,168 @@ function AdminOrderDetailPageContent() {
                             <Info label="Cliente" value={order.customerName} />
                             <Info label="Email" value={order.customerEmail} />
                             <Info label="Fecha" value={formatDate(order.placedAt)} />
-                            <Info label="Estado" value={order.status} />
-                            <Info label="Pago" value={order.paymentStatus} />
-                            <Info label="Entrega" value={order.fulfillmentStatus} />
+                            <Info label="Recibe" value={order.recipientName} />
+                            <Info label="Teléfono" value={order.phone} />
+                            <Info
+                                label="Método"
+                                value={
+                                    order.deliveryMethod === "DELIVERY"
+                                        ? "Envío a domicilio"
+                                        : "Retiro en local"
+                                }
+                            />
                             <Info label="Total" value={formatMoney(order.grandTotal, order.currency)} />
                         </section>
 
-                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20">
-                            <h2 className="text-xl font-semibold text-white">
-                                Actualizar estados
-                            </h2>
+                        <section className="mt-8 grid gap-6 lg:grid-cols-2">
+                            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20">
+                                <h2 className="text-xl font-semibold text-white">
+                                    Información del pedido
+                                </h2>
 
-                            <form
-                                onSubmit={handleSubmit}
-                                className="mt-6 grid gap-5 md:grid-cols-3"
-                            >
-                                <label className="space-y-2">
-                                    <span className="text-sm font-medium text-slate-200">
-                                        Estado de orden
-                                    </span>
-                                    <select
-                                        value={status}
-                                        onChange={(event) => setStatus(event.target.value)}
-                                        className="input"
-                                    >
-                                        {ORDER_STATUS_OPTIONS.map((option) => (
-                                            <option key={option} value={option}>
-                                                {option}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+                                {order.shippingAddress ? (
+                                    <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                            Dirección de envío
+                                        </p>
 
-                                <label className="space-y-2">
-                                    <span className="text-sm font-medium text-slate-200">
-                                        Estado de pago
-                                    </span>
-                                    <select
-                                        value={paymentStatus}
-                                        onChange={(event) => setPaymentStatus(event.target.value)}
-                                        className="input"
-                                    >
-                                        {PAYMENT_STATUS_OPTIONS.map((option) => (
-                                            <option key={option} value={option}>
-                                                {option}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+                                        <div className="mt-3 space-y-1 text-sm text-slate-300">
+                                            <p>{order.shippingAddress.recipientName}</p>
+                                            <p>
+                                                {order.shippingAddress.line1}
+                                                {order.shippingAddress.line2
+                                                    ? `, ${order.shippingAddress.line2}`
+                                                    : ""}
+                                            </p>
+                                            <p>
+                                                {order.shippingAddress.city}
+                                                {order.shippingAddress.state
+                                                    ? `, ${order.shippingAddress.state}`
+                                                    : ""}
+                                            </p>
+                                            <p>
+                                                {order.shippingAddress.postalCode} ·{" "}
+                                                {order.shippingAddress.countryCode}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                            Entrega
+                                        </p>
+                                        <p className="mt-3 text-sm text-slate-300">
+                                            Esta orden fue cargada con retiro en local.
+                                        </p>
+                                    </div>
+                                )}
 
-                                <label className="space-y-2">
-                                    <span className="text-sm font-medium text-slate-200">
-                                        Estado de entrega
-                                    </span>
-                                    <select
-                                        value={fulfillmentStatus}
-                                        onChange={(event) => setFulfillmentStatus(event.target.value)}
-                                        className="input"
-                                    >
-                                        {FULFILLMENT_STATUS_OPTIONS.map((option) => (
-                                            <option key={option} value={option}>
-                                                {option}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+                                {order.notes ? (
+                                    <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                            Notas del pedido
+                                        </p>
+                                        <p className="mt-3 text-sm leading-7 text-slate-300">
+                                            {order.notes}
+                                        </p>
+                                    </div>
+                                ) : null}
 
-                                <div className="md:col-span-3">
-                                    <button
-                                        type="submit"
-                                        disabled={isSaving}
-                                        className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-                                    >
-                                        {isSaving ? "Guardando..." : "Guardar estados"}
-                                    </button>
+                                <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                        Resumen económico
+                                    </p>
+
+                                    <div className="mt-3 space-y-2">
+                                        <div className="flex items-center justify-between text-sm text-slate-400">
+                                            <span>Subtotal</span>
+                                            <span>{formatMoney(order.subtotal, order.currency)}</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-sm text-slate-400">
+                                            <span>Envío</span>
+                                            <span>{formatMoney(order.shippingTotal, order.currency)}</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between border-t border-slate-800 pt-2 text-base font-semibold text-white">
+                                            <span>Total</span>
+                                            <span>{formatMoney(order.grandTotal, order.currency)}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </form>
+                            </div>
+
+                            <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20">
+                                <h2 className="text-xl font-semibold text-white">
+                                    Actualizar estados
+                                </h2>
+
+                                <form
+                                    onSubmit={handleSubmit}
+                                    className="mt-6 grid gap-5 md:grid-cols-3"
+                                >
+                                    <label className="space-y-2">
+                                        <span className="text-sm font-medium text-slate-200">
+                                            Estado de orden
+                                        </span>
+                                        <select
+                                            value={status}
+                                            onChange={(event) => setStatus(event.target.value)}
+                                            className="input"
+                                        >
+                                            {ORDER_STATUS_OPTIONS.map((option) => (
+                                                <option key={option} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+
+                                    <label className="space-y-2">
+                                        <span className="text-sm font-medium text-slate-200">
+                                            Estado de pago
+                                        </span>
+                                        <select
+                                            value={paymentStatus}
+                                            onChange={(event) => setPaymentStatus(event.target.value)}
+                                            className="input"
+                                        >
+                                            {PAYMENT_STATUS_OPTIONS.map((option) => (
+                                                <option key={option} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+
+                                    <label className="space-y-2">
+                                        <span className="text-sm font-medium text-slate-200">
+                                            Estado de entrega
+                                        </span>
+                                        <select
+                                            value={fulfillmentStatus}
+                                            onChange={(event) => setFulfillmentStatus(event.target.value)}
+                                            className="input"
+                                        >
+                                            {FULFILLMENT_STATUS_OPTIONS.map((option) => (
+                                                <option key={option} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+
+                                    <div className="md:col-span-3">
+                                        <button
+                                            type="submit"
+                                            disabled={isSaving}
+                                            className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {isSaving ? "Guardando..." : "Guardar estados"}
+                                        </button>
+                                    </div>
+                                </form>
+                            </section>
                         </section>
 
                         <section className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-2xl shadow-black/20">
@@ -297,7 +383,7 @@ function Info({ label, value }: { label: string; value: string }) {
     return (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
             <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-            <p className="mt-2 text-base font-semibold text-slate-100">{value}</p>
+            <p className="mt-2 text-base font-semibold text-slate-100">{value || "—"}</p>
         </div>
     );
 }

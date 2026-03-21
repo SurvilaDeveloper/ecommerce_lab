@@ -1,3 +1,4 @@
+//backend/src/main/java/com/gabrielsurvila/commerce_lab/common/dto/HealthController
 package com.gabrielsurvila.commerce_lab.common;
 
 import org.springframework.web.bind.annotation.GetMapping;

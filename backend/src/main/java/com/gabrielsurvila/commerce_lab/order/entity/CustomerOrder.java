@@ -1,6 +1,7 @@
 //backend/src/main/java/com/gabrielsurvila/commerce_lab/order/entity/CustomerOrder.java
 package com.gabrielsurvila.commerce_lab.order.entity;
 
+import com.gabrielsurvila.commerce_lab.user.entity.Address;
 import com.gabrielsurvila.commerce_lab.user.entity.UserAccount;
 import jakarta.persistence.*;
 
@@ -48,6 +49,26 @@ public class CustomerOrder {
 
     @Column(name = "grand_total", nullable = false, precision = 12, scale = 2)
     private BigDecimal grandTotal = BigDecimal.ZERO;
+
+    @Column(name = "delivery_method", length = 20)
+    private String deliveryMethod;
+
+    @Column(name = "recipient_name", length = 150)
+    private String recipientName;
+
+    @Column(name = "phone", length = 40)
+    private String phone;
+
+    @Column(name = "notes", length = 500)
+    private String notes;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shipping_address_id")
+    private Address shippingAddress;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "billing_address_id")
+    private Address billingAddress;
 
     @Column(name = "placed_at")
     private LocalDateTime placedAt;
@@ -120,6 +141,30 @@ public class CustomerOrder {
         return grandTotal;
     }
 
+    public String getDeliveryMethod() {
+        return deliveryMethod;
+    }
+
+    public String getRecipientName() {
+        return recipientName;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public Address getShippingAddress() {
+        return shippingAddress;
+    }
+
+    public Address getBillingAddress() {
+        return billingAddress;
+    }
+
     public LocalDateTime getPlacedAt() {
         return placedAt;
     }
@@ -174,6 +219,30 @@ public class CustomerOrder {
 
     public void setGrandTotal(BigDecimal grandTotal) {
         this.grandTotal = grandTotal;
+    }
+
+    public void setDeliveryMethod(String deliveryMethod) {
+        this.deliveryMethod = deliveryMethod;
+    }
+
+    public void setRecipientName(String recipientName) {
+        this.recipientName = recipientName;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public void setShippingAddress(Address shippingAddress) {
+        this.shippingAddress = shippingAddress;
+    }
+
+    public void setBillingAddress(Address billingAddress) {
+        this.billingAddress = billingAddress;
     }
 
     public void setPlacedAt(LocalDateTime placedAt) {

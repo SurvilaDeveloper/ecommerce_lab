@@ -2,10 +2,12 @@
 package com.gabrielsurvila.commerce_lab.order.service;
 
 import com.gabrielsurvila.commerce_lab.order.dto.AdminOrderResponse;
+import com.gabrielsurvila.commerce_lab.order.dto.OrderAddressResponse;
 import com.gabrielsurvila.commerce_lab.order.dto.OrderItemResponse;
 import com.gabrielsurvila.commerce_lab.order.entity.CustomerOrder;
 import com.gabrielsurvila.commerce_lab.order.repository.CustomerOrderRepository;
 import com.gabrielsurvila.commerce_lab.order.repository.OrderItemRepository;
+import com.gabrielsurvila.commerce_lab.user.entity.Address;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,7 +58,29 @@ public class AdminOrderQueryService {
                         item.getLineTotal()))
                 .toList();
 
-        String customerName = order.getUser().getFirstName() + " " + order.getUser().getLastName();
+        OrderAddressResponse shippingAddress = null;
+
+        if (order.getShippingAddress() != null) {
+            Address address = order.getShippingAddress();
+
+            shippingAddress = new OrderAddressResponse(
+                    address.getId(),
+                    address.getRecipientName(),
+                    address.getLine1(),
+                    address.getLine2(),
+                    address.getCity(),
+                    address.getState(),
+                    address.getPostalCode(),
+                    address.getCountryCode());
+        }
+
+        String firstName = order.getUser().getFirstName() == null ? "" : order.getUser().getFirstName().trim();
+        String lastName = order.getUser().getLastName() == null ? "" : order.getUser().getLastName().trim();
+        String customerName = (firstName + " " + lastName).trim();
+
+        if (customerName.isBlank()) {
+            customerName = order.getUser().getEmail();
+        }
 
         return new AdminOrderResponse(
                 order.getId(),
@@ -69,8 +93,16 @@ public class AdminOrderQueryService {
                 order.getFulfillmentStatus(),
                 order.getCurrency(),
                 order.getSubtotal(),
+                order.getDiscountTotal(),
+                order.getShippingTotal(),
+                order.getTaxTotal(),
                 order.getGrandTotal(),
+                order.getDeliveryMethod(),
+                order.getRecipientName(),
+                order.getPhone(),
+                order.getNotes(),
                 order.getPlacedAt(),
+                shippingAddress,
                 items);
     }
 }
