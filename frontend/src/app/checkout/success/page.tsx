@@ -3,20 +3,41 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getMyOrderById, type OrderResponse } from "@/lib/orders";
 import { formatMoney } from "@/lib/format";
+import { clearGuestLastOrder, readGuestLastOrder } from "@/lib/guest-cart";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function CheckoutSuccessPage() {
     const searchParams = useSearchParams();
     const orderIdParam = searchParams.get("orderId");
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+    const hasInitialized = useRef(false);
 
     const [order, setOrder] = useState<OrderResponse | null>(null);
+    const [isGuestOrder, setIsGuestOrder] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState("");
 
     useEffect(() => {
+        if (authLoading || hasInitialized.current) {
+            return;
+        }
+
+        hasInitialized.current = true;
+
         async function loadOrder() {
+            const guestOrder = readGuestLastOrder<OrderResponse>();
+
+            if (guestOrder) {
+                setOrder(guestOrder);
+                setIsGuestOrder(true);
+                setIsLoading(false);
+                return;
+            }
+
             if (!orderIdParam) {
                 setErrorMessage("No se encontró la orden.");
                 setIsLoading(false);
@@ -31,9 +52,18 @@ export default function CheckoutSuccessPage() {
                 return;
             }
 
+            if (!isAuthenticated) {
+                setErrorMessage(
+                    "No se pudo recuperar la orden. Si realizaste la compra como invitado, volvé a intentar desde la confirmación final."
+                );
+                setIsLoading(false);
+                return;
+            }
+
             try {
                 const data = await getMyOrderById(orderId);
                 setOrder(data);
+                setIsGuestOrder(false);
             } catch (error) {
                 if (error instanceof Error && error.message.trim()) {
                     setErrorMessage(error.message);
@@ -46,7 +76,13 @@ export default function CheckoutSuccessPage() {
         }
 
         loadOrder();
-    }, [orderIdParam]);
+    }, [authLoading, isAuthenticated, orderIdParam]);
+
+    useEffect(() => {
+        if (order && isGuestOrder) {
+            clearGuestLastOrder();
+        }
+    }, [order, isGuestOrder]);
 
     return (
         <main className="min-h-[calc(100vh-73px)] bg-slate-950 text-slate-100">
@@ -72,17 +108,25 @@ export default function CheckoutSuccessPage() {
 
                             <div className="mt-8 flex flex-wrap gap-3">
                                 <Link
-                                    href="/orders"
-                                    className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
-                                >
-                                    Ver mis órdenes
-                                </Link>
-                                <Link
                                     href="/products"
                                     className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
                                 >
                                     Seguir comprando
                                 </Link>
+                                <Link
+                                    href="/"
+                                    className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
+                                >
+                                    Volver al inicio
+                                </Link>
+                                {isAuthenticated ? (
+                                    <Link
+                                        href="/orders"
+                                        className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
+                                    >
+                                        Ver mis órdenes
+                                    </Link>
+                                ) : null}
                             </div>
                         </>
                     ) : order ? (
@@ -94,6 +138,12 @@ export default function CheckoutSuccessPage() {
                             <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
                                 Tu orden fue creada correctamente
                             </h1>
+
+                            <p className="mt-4 text-sm leading-7 text-emerald-50/90">
+                                {isGuestOrder
+                                    ? "Tu compra quedó registrada como visitante."
+                                    : "Tu compra quedó registrada en tu cuenta."}
+                            </p>
 
                             <div className="mt-6 grid gap-4 md:grid-cols-2">
                                 <div className="rounded-2xl border border-emerald-400/15 bg-slate-950/40 p-4">
@@ -175,12 +225,15 @@ export default function CheckoutSuccessPage() {
                             ) : null}
 
                             <div className="mt-8 flex flex-wrap gap-3">
-                                <Link
-                                    href="/orders"
-                                    className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
-                                >
-                                    Ver mis órdenes
-                                </Link>
+                                {!isGuestOrder && isAuthenticated ? (
+                                    <Link
+                                        href="/orders"
+                                        className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
+                                    >
+                                        Ver mis órdenes
+                                    </Link>
+                                ) : null}
+
                                 <Link
                                     href="/products"
                                     className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"

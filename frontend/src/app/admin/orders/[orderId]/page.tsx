@@ -50,6 +50,15 @@ function formatDate(value: string | null) {
     }
 }
 
+function Info({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-2xl shadow-black/20">
+            <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+            <p className="mt-2 text-sm font-medium text-slate-100">{value || "—"}</p>
+        </div>
+    );
+}
+
 function AdminOrderDetailPageContent() {
     const params = useParams();
     const orderId = Number(params.orderId);
@@ -162,6 +171,22 @@ function AdminOrderDetailPageContent() {
                             <Info label="Orden" value={order.orderNumber} />
                             <Info label="Cliente" value={order.customerName} />
                             <Info label="Email" value={order.customerEmail} />
+
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-2xl shadow-black/20">
+                                <p className="text-xs uppercase tracking-wide text-slate-500">
+                                    Tipo de comprador
+                                </p>
+
+                                <span
+                                    className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${order.orderSource === "GUEST"
+                                            ? "bg-amber-500/15 text-amber-300"
+                                            : "bg-emerald-500/15 text-emerald-300"
+                                        }`}
+                                >
+                                    {order.orderSource === "GUEST" ? "Invitado" : "Registrado"}
+                                </span>
+                            </div>
+
                             <Info label="Fecha" value={formatDate(order.placedAt)} />
                             <Info label="Recibe" value={order.recipientName} />
                             <Info label="Teléfono" value={order.phone} />
@@ -173,7 +198,10 @@ function AdminOrderDetailPageContent() {
                                         : "Retiro en local"
                                 }
                             />
-                            <Info label="Total" value={formatMoney(order.grandTotal, order.currency)} />
+                            <Info
+                                label="Total"
+                                value={formatMoney(order.grandTotal, order.currency)}
+                            />
                         </section>
 
                         <section className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -259,18 +287,15 @@ function AdminOrderDetailPageContent() {
                                     Actualizar estados
                                 </h2>
 
-                                <form
-                                    onSubmit={handleSubmit}
-                                    className="mt-6 grid gap-5 md:grid-cols-3"
-                                >
-                                    <label className="space-y-2">
-                                        <span className="text-sm font-medium text-slate-200">
-                                            Estado de orden
-                                        </span>
+                                <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-300">
+                                            Estado general
+                                        </label>
                                         <select
                                             value={status}
                                             onChange={(event) => setStatus(event.target.value)}
-                                            className="input"
+                                            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                         >
                                             {ORDER_STATUS_OPTIONS.map((option) => (
                                                 <option key={option} value={option}>
@@ -278,16 +303,16 @@ function AdminOrderDetailPageContent() {
                                                 </option>
                                             ))}
                                         </select>
-                                    </label>
+                                    </div>
 
-                                    <label className="space-y-2">
-                                        <span className="text-sm font-medium text-slate-200">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-300">
                                             Estado de pago
-                                        </span>
+                                        </label>
                                         <select
                                             value={paymentStatus}
                                             onChange={(event) => setPaymentStatus(event.target.value)}
-                                            className="input"
+                                            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                         >
                                             {PAYMENT_STATUS_OPTIONS.map((option) => (
                                                 <option key={option} value={option}>
@@ -295,16 +320,18 @@ function AdminOrderDetailPageContent() {
                                                 </option>
                                             ))}
                                         </select>
-                                    </label>
+                                    </div>
 
-                                    <label className="space-y-2">
-                                        <span className="text-sm font-medium text-slate-200">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-300">
                                             Estado de entrega
-                                        </span>
+                                        </label>
                                         <select
                                             value={fulfillmentStatus}
-                                            onChange={(event) => setFulfillmentStatus(event.target.value)}
-                                            className="input"
+                                            onChange={(event) =>
+                                                setFulfillmentStatus(event.target.value)
+                                            }
+                                            className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                         >
                                             {FULFILLMENT_STATUS_OPTIONS.map((option) => (
                                                 <option key={option} value={option}>
@@ -312,49 +339,58 @@ function AdminOrderDetailPageContent() {
                                                 </option>
                                             ))}
                                         </select>
-                                    </label>
-
-                                    <div className="md:col-span-3">
-                                        <button
-                                            type="submit"
-                                            disabled={isSaving}
-                                            className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-                                        >
-                                            {isSaving ? "Guardando..." : "Guardar estados"}
-                                        </button>
                                     </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={isSaving}
+                                        className="w-full rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {isSaving ? "Guardando cambios..." : "Guardar cambios"}
+                                    </button>
                                 </form>
                             </section>
                         </section>
 
-                        <section className="mt-8 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-2xl shadow-black/20">
-                            <div className="overflow-x-auto">
+                        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20">
+                            <div className="flex items-center justify-between gap-4">
+                                <h2 className="text-xl font-semibold text-white">
+                                    Items de la orden
+                                </h2>
+
+                                <Link
+                                    href="/admin/orders"
+                                    className="rounded-2xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
+                                >
+                                    Volver al listado
+                                </Link>
+                            </div>
+
+                            <div className="mt-6 overflow-x-auto">
                                 <table className="min-w-full text-sm">
-                                    <thead className="bg-slate-950/70 text-left text-slate-400">
+                                    <thead className="border-b border-slate-800 text-left text-slate-400">
                                         <tr>
-                                            <th className="px-4 py-4 font-medium">Producto</th>
-                                            <th className="px-4 py-4 font-medium">SKU</th>
-                                            <th className="px-4 py-4 font-medium">Cantidad</th>
-                                            <th className="px-4 py-4 font-medium">Unitario</th>
-                                            <th className="px-4 py-4 font-medium">Total</th>
+                                            <th className="px-4 py-3 font-medium">Producto</th>
+                                            <th className="px-4 py-3 font-medium">SKU</th>
+                                            <th className="px-4 py-3 font-medium">Cantidad</th>
+                                            <th className="px-4 py-3 font-medium">Unitario</th>
+                                            <th className="px-4 py-3 font-medium">Total</th>
                                         </tr>
                                     </thead>
+
                                     <tbody>
                                         {order.items.map((item) => (
-                                            <tr key={item.id} className="border-t border-slate-800">
-                                                <td className="px-4 py-4 text-slate-200">
-                                                    {item.productName}
-                                                </td>
-                                                <td className="px-4 py-4 text-slate-400">
-                                                    {item.productSku}
-                                                </td>
-                                                <td className="px-4 py-4 text-slate-400">
-                                                    {item.quantity}
-                                                </td>
-                                                <td className="px-4 py-4 text-slate-400">
+                                            <tr
+                                                key={item.id}
+                                                className="border-b border-slate-800/70 text-slate-300"
+                                            >
+                                                <td className="px-4 py-4">{item.productName}</td>
+                                                <td className="px-4 py-4">{item.productSku}</td>
+                                                <td className="px-4 py-4">{item.quantity}</td>
+                                                <td className="px-4 py-4">
                                                     {formatMoney(item.unitPrice, order.currency)}
                                                 </td>
-                                                <td className="px-4 py-4 font-semibold text-white">
+                                                <td className="px-4 py-4 font-medium text-slate-100">
                                                     {formatMoney(item.lineTotal, order.currency)}
                                                 </td>
                                             </tr>
@@ -363,28 +399,14 @@ function AdminOrderDetailPageContent() {
                                 </table>
                             </div>
                         </section>
-
-                        <div className="mt-8">
-                            <Link
-                                href="/admin/orders"
-                                className="inline-flex rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
-                            >
-                                Volver a órdenes
-                            </Link>
-                        </div>
                     </>
-                ) : null}
+                ) : (
+                    <div className="mt-8 rounded-3xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-12 text-center text-slate-400">
+                        No se encontró la orden.
+                    </div>
+                )}
             </div>
         </main>
-    );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-            <p className="mt-2 text-base font-semibold text-slate-100">{value || "—"}</p>
-        </div>
     );
 }
 

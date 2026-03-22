@@ -25,10 +25,23 @@ public class GlobalExceptionHandler {
     }
 
     // fallback global (muy importante)
+    /*
+     * @ExceptionHandler(Exception.class)
+     * 
+     * @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+     * public Map<String, Object> handleException(Exception ex) {
+     * return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
+     * "Unexpected error occurred");
+     * }
+     */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Map<String, Object> handleException(Exception ex) {
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error occurred");
+        ex.printStackTrace();
+
+        return buildResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
     }
 
     // helper para mantener formato consistente

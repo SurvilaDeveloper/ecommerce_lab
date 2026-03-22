@@ -253,24 +253,22 @@ export function Navbar() {
                     </div>
 
                     <div className="hidden items-center gap-3 md:flex">
+                        <button
+                            type="button"
+                            onClick={toggleCartPreview}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 hover:text-white"
+                        >
+                            <ShoppingCart className="h-4 w-4" />
+                            <span>Carrito</span>
+                            <span className="rounded-full bg-sky-500 px-2 py-0.5 text-xs font-bold text-slate-950">
+                                {cartCount}
+                            </span>
+                        </button>
+
                         {isAuthenticated ? (
                             <>
-                                <button
-                                    type="button"
-                                    onClick={toggleCartPreview}
-                                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 hover:text-white"
-                                >
-                                    <ShoppingCart className="h-4 w-4" />
-                                    <span>Carrito</span>
-                                    <span className="rounded-full bg-sky-500 px-2 py-0.5 text-xs font-bold text-slate-950">
-                                        {cartCount}
-                                    </span>
-                                </button>
-
                                 <span className="text-sm text-slate-400">
-                                    {user?.firstName
-                                        ? `Hola, ${user.firstName}`
-                                        : user?.email}
+                                    {user?.firstName ? `Hola, ${user.firstName}` : user?.email}
                                 </span>
 
                                 <button
@@ -304,18 +302,16 @@ export function Navbar() {
                     </div>
 
                     <div className="flex items-center gap-2 md:hidden">
-                        {isAuthenticated ? (
-                            <button
-                                type="button"
-                                onClick={toggleCartPreview}
-                                className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
-                            >
-                                <ShoppingCart className="h-4 w-4" />
-                                <span className="rounded-full bg-sky-500 px-2 py-0.5 text-xs font-bold text-slate-950">
-                                    {cartCount}
-                                </span>
-                            </button>
-                        ) : null}
+                        <button
+                            type="button"
+                            onClick={toggleCartPreview}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+                        >
+                            <ShoppingCart className="h-4 w-4" />
+                            <span className="rounded-full bg-sky-500 px-2 py-0.5 text-xs font-bold text-slate-950">
+                                {cartCount}
+                            </span>
+                        </button>
 
                         <button
                             type="button"

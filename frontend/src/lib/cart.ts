@@ -17,7 +17,7 @@ export type CartItemResponse = {
 
 export type CartResponse = {
     cartId: number;
-    userId: number;
+    userId: number | null;
     items: CartItemResponse[];
     totalItems: number;
     subtotal: number;

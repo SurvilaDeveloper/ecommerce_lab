@@ -3,8 +3,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { addCartItem } from "@/lib/cart";
+import { addGuestCartItem } from "@/lib/guest-cart";
 import { formatMoney } from "@/lib/format";
 import {
     getProductBySlug,
@@ -17,7 +18,6 @@ import { useCart } from "@/components/cart/CartProvider";
 
 export default function PublicProductDetailPage() {
     const params = useParams();
-    const router = useRouter();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const { refreshCart } = useCart();
 
@@ -72,19 +72,28 @@ export default function PublicProductDetailPage() {
 
     async function handleAddToCart() {
         if (!product) return;
-
         if (authLoading) return;
-
-        if (!isAuthenticated) {
-            router.push("/login");
-            return;
-        }
 
         setIsAddingToCart(true);
         setCartMessage("");
 
         try {
-            await addCartItem(product.id, 1);
+            if (isAuthenticated) {
+                await addCartItem(product.id, 1);
+            } else {
+                addGuestCartItem({
+                    productId: product.id,
+                    productName: product.name,
+                    productSlug: product.slug,
+                    productSku: product.sku,
+                    productPrimaryImageUrl: product.primaryImageUrl ?? null,
+                    quantity: 1,
+                    unitPrice: product.price,
+                    availableStock: product.stock,
+                    productActive: product.active,
+                });
+            }
+
             await refreshCart();
             setCartMessage("Producto agregado al carrito.");
         } catch (error) {
@@ -175,8 +184,8 @@ export default function PublicProductDetailPage() {
                                         type="button"
                                         onClick={() => setSelectedImageIndex(index)}
                                         className={`overflow-hidden rounded-2xl border transition ${selectedImageIndex === index
-                                            ? "border-sky-400"
-                                            : "border-slate-800 hover:border-slate-700"
+                                                ? "border-sky-400"
+                                                : "border-slate-800 hover:border-slate-700"
                                             }`}
                                     >
                                         <div className="aspect-square bg-slate-900">
@@ -229,8 +238,8 @@ export default function PublicProductDetailPage() {
 
                                 <span
                                     className={`rounded-full px-3 py-1 ${product.stock > 0
-                                        ? "bg-emerald-500/15 text-emerald-300"
-                                        : "bg-red-500/15 text-red-300"
+                                            ? "bg-emerald-500/15 text-emerald-300"
+                                            : "bg-red-500/15 text-red-300"
                                         }`}
                                 >
                                     {product.stock > 0 ? `Stock disponible: ${product.stock}` : "Sin stock"}
@@ -263,14 +272,12 @@ export default function PublicProductDetailPage() {
                                             : "Agregar al carrito"}
                                 </button>
 
-                                {isAuthenticated && (
-                                    <Link
-                                        href="/cart"
-                                        className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
-                                    >
-                                        Ver carrito
-                                    </Link>
-                                )}
+                                <Link
+                                    href="/cart"
+                                    className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
+                                >
+                                    Ver carrito
+                                </Link>
                             </div>
                         </div>
 

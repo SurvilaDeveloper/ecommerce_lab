@@ -5,23 +5,36 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCart, type CartResponse } from "@/lib/cart";
+import {
+    buildGuestCheckoutItems,
+    clearGuestCart,
+    getGuestCart,
+    storeGuestLastOrder,
+} from "@/lib/guest-cart";
 import { formatMoney } from "@/lib/format";
-import { checkoutOrder, type CheckoutRequest } from "@/lib/orders";
+import {
+    checkoutOrder,
+    guestCheckoutOrder,
+    type CheckoutRequest,
+    type GuestCheckoutRequest,
+} from "@/lib/orders";
 import { useCart } from "@/components/cart/CartProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 type DeliveryMethod = "PICKUP" | "DELIVERY";
 
 export default function CheckoutPage() {
     const router = useRouter();
     const { refreshCart } = useCart();
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
 
     const [cart, setCart] = useState<CartResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
 
-    const [deliveryMethod, setDeliveryMethod] =
-        useState<DeliveryMethod>("PICKUP");
+    const [customerEmail, setCustomerEmail] = useState("");
+    const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("PICKUP");
     const [recipientName, setRecipientName] = useState("");
     const [phone, setPhone] = useState("");
     const [notes, setNotes] = useState("");
@@ -34,15 +47,16 @@ export default function CheckoutPage() {
     const [countryCode, setCountryCode] = useState("AR");
 
     useEffect(() => {
+        if (authLoading) return;
         loadCart();
-    }, []);
+    }, [authLoading, isAuthenticated]);
 
     async function loadCart() {
         setIsLoading(true);
         setErrorMessage("");
 
         try {
-            const data = await getCart();
+            const data = isAuthenticated ? await getCart() : getGuestCart();
             setCart(data);
         } catch (error) {
             if (error instanceof Error && error.message.trim()) {
@@ -65,6 +79,8 @@ export default function CheckoutPage() {
         if (!recipientName.trim()) return false;
         if (!phone.trim()) return false;
 
+        if (!isAuthenticated && !customerEmail.trim()) return false;
+
         if (deliveryMethod === "DELIVERY") {
             if (!line1.trim()) return false;
             if (!city.trim()) return false;
@@ -77,6 +93,8 @@ export default function CheckoutPage() {
         items.length,
         recipientName,
         phone,
+        isAuthenticated,
+        customerEmail,
         deliveryMethod,
         line1,
         city,
@@ -93,15 +111,42 @@ export default function CheckoutPage() {
         setErrorMessage("");
 
         try {
-            const payload: CheckoutRequest = {
+            if (isAuthenticated) {
+                const payload: CheckoutRequest = {
+                    deliveryMethod,
+                    recipientName: recipientName.trim(),
+                    phone: phone.trim(),
+                    notes: notes.trim() || undefined,
+                };
+
+                if (deliveryMethod === "DELIVERY") {
+                    payload.shippingAddress = {
+                        line1: line1.trim(),
+                        line2: line2.trim() || undefined,
+                        city: city.trim(),
+                        state: state.trim() || undefined,
+                        postalCode: postalCode.trim(),
+                        countryCode: countryCode.trim().toUpperCase(),
+                    };
+                }
+
+                const order = await checkoutOrder(payload);
+                await refreshCart();
+                router.push(`/checkout/success?orderId=${order.id}`);
+                return;
+            }
+
+            const guestPayload: GuestCheckoutRequest = {
+                customerEmail: customerEmail.trim(),
                 deliveryMethod,
                 recipientName: recipientName.trim(),
                 phone: phone.trim(),
                 notes: notes.trim() || undefined,
+                items: buildGuestCheckoutItems(),
             };
 
             if (deliveryMethod === "DELIVERY") {
-                payload.shippingAddress = {
+                guestPayload.shippingAddress = {
                     line1: line1.trim(),
                     line2: line2.trim() || undefined,
                     city: city.trim(),
@@ -111,10 +156,12 @@ export default function CheckoutPage() {
                 };
             }
 
-            const order = await checkoutOrder(payload);
+            const order = await guestCheckoutOrder(guestPayload);
+            storeGuestLastOrder(order);
+            clearGuestCart();
             await refreshCart();
 
-            router.push(`/checkout/success?orderId=${order.id}`);
+            router.push("/checkout/success");
         } catch (error) {
             if (error instanceof Error && error.message.trim()) {
                 setErrorMessage(error.message);
@@ -179,6 +226,24 @@ export default function CheckoutPage() {
                                         Datos del comprador
                                     </h2>
 
+                                    {!isAuthenticated && (
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-slate-300">
+                                                Email
+                                            </label>
+                                            <input
+                                                type="email"
+                                                value={customerEmail}
+                                                onChange={(event) => setCustomerEmail(event.target.value)}
+                                                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
+                                                placeholder="tuemail@ejemplo.com"
+                                            />
+                                            <p className="text-xs text-slate-500">
+                                                Te lo pedimos para asociar la compra como visitante.
+                                            </p>
+                                        </div>
+                                    )}
+
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-slate-300">
@@ -186,9 +251,7 @@ export default function CheckoutPage() {
                                             </label>
                                             <input
                                                 value={recipientName}
-                                                onChange={(event) =>
-                                                    setRecipientName(event.target.value)
-                                                }
+                                                onChange={(event) => setRecipientName(event.target.value)}
                                                 className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                                 placeholder="Gabriel Survila"
                                             />
@@ -200,9 +263,7 @@ export default function CheckoutPage() {
                                             </label>
                                             <input
                                                 value={phone}
-                                                onChange={(event) =>
-                                                    setPhone(event.target.value)
-                                                }
+                                                onChange={(event) => setPhone(event.target.value)}
                                                 className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                                 placeholder="11 1234 5678"
                                             />
@@ -224,9 +285,7 @@ export default function CheckoutPage() {
                                                     : "border-slate-700 bg-slate-950 hover:border-slate-600"
                                                 }`}
                                         >
-                                            <div className="font-semibold text-white">
-                                                Retiro
-                                            </div>
+                                            <div className="font-semibold text-white">Retiro</div>
                                             <p className="mt-1 text-sm text-slate-400">
                                                 Retirás el pedido personalmente.
                                             </p>
@@ -240,9 +299,7 @@ export default function CheckoutPage() {
                                                     : "border-slate-700 bg-slate-950 hover:border-slate-600"
                                                 }`}
                                         >
-                                            <div className="font-semibold text-white">
-                                                Envío
-                                            </div>
+                                            <div className="font-semibold text-white">Envío</div>
                                             <p className="mt-1 text-sm text-slate-400">
                                                 Enviamos el pedido a tu dirección.
                                             </p>
@@ -263,9 +320,7 @@ export default function CheckoutPage() {
                                                 </label>
                                                 <input
                                                     value={line1}
-                                                    onChange={(event) =>
-                                                        setLine1(event.target.value)
-                                                    }
+                                                    onChange={(event) => setLine1(event.target.value)}
                                                     className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                                     placeholder="Calle 1234"
                                                 />
@@ -277,9 +332,7 @@ export default function CheckoutPage() {
                                                 </label>
                                                 <input
                                                     value={line2}
-                                                    onChange={(event) =>
-                                                        setLine2(event.target.value)
-                                                    }
+                                                    onChange={(event) => setLine2(event.target.value)}
                                                     className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                                     placeholder="Depto B"
                                                 />
@@ -291,9 +344,7 @@ export default function CheckoutPage() {
                                                 </label>
                                                 <input
                                                     value={city}
-                                                    onChange={(event) =>
-                                                        setCity(event.target.value)
-                                                    }
+                                                    onChange={(event) => setCity(event.target.value)}
                                                     className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                                     placeholder="Berazategui"
                                                 />
@@ -305,9 +356,7 @@ export default function CheckoutPage() {
                                                 </label>
                                                 <input
                                                     value={state}
-                                                    onChange={(event) =>
-                                                        setState(event.target.value)
-                                                    }
+                                                    onChange={(event) => setState(event.target.value)}
                                                     className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                                     placeholder="Buenos Aires"
                                                 />
@@ -319,9 +368,7 @@ export default function CheckoutPage() {
                                                 </label>
                                                 <input
                                                     value={postalCode}
-                                                    onChange={(event) =>
-                                                        setPostalCode(event.target.value)
-                                                    }
+                                                    onChange={(event) => setPostalCode(event.target.value)}
                                                     className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                                     placeholder="1884"
                                                 />
@@ -333,9 +380,7 @@ export default function CheckoutPage() {
                                                 </label>
                                                 <input
                                                     value={countryCode}
-                                                    onChange={(event) =>
-                                                        setCountryCode(event.target.value)
-                                                    }
+                                                    onChange={(event) => setCountryCode(event.target.value)}
                                                     className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500"
                                                     placeholder="AR"
                                                 />
@@ -370,9 +415,7 @@ export default function CheckoutPage() {
                                         disabled={!canSubmit || isSubmitting}
                                         className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
                                     >
-                                        {isSubmitting
-                                            ? "Procesando compra..."
-                                            : "Confirmar compra"}
+                                        {isSubmitting ? "Procesando compra..." : "Confirmar compra"}
                                     </button>
                                 </div>
                             </form>
@@ -388,9 +431,7 @@ export default function CheckoutPage() {
                                         className="flex items-start justify-between gap-4 border-b border-slate-800 pb-4"
                                     >
                                         <div>
-                                            <p className="font-medium text-white">
-                                                {item.productName}
-                                            </p>
+                                            <p className="font-medium text-white">{item.productName}</p>
                                             <p className="text-sm text-slate-400">
                                                 Cantidad: {item.quantity}
                                             </p>

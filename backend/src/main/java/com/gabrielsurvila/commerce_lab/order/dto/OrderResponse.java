@@ -18,6 +18,8 @@ public class OrderResponse {
     private final BigDecimal shippingTotal;
     private final BigDecimal taxTotal;
     private final BigDecimal grandTotal;
+    private final String customerEmail;
+    private final String orderSource;
     private final String deliveryMethod;
     private final String recipientName;
     private final String phone;
@@ -38,6 +40,8 @@ public class OrderResponse {
             BigDecimal shippingTotal,
             BigDecimal taxTotal,
             BigDecimal grandTotal,
+            String customerEmail,
+            String orderSource,
             String deliveryMethod,
             String recipientName,
             String phone,
@@ -56,6 +60,8 @@ public class OrderResponse {
         this.shippingTotal = shippingTotal;
         this.taxTotal = taxTotal;
         this.grandTotal = grandTotal;
+        this.customerEmail = customerEmail;
+        this.orderSource = orderSource;
         this.deliveryMethod = deliveryMethod;
         this.recipientName = recipientName;
         this.phone = phone;
@@ -107,6 +113,14 @@ public class OrderResponse {
 
     public BigDecimal getGrandTotal() {
         return grandTotal;
+    }
+
+    public String getCustomerEmail() {
+        return customerEmail;
+    }
+
+    public String getOrderSource() {
+        return orderSource;
     }
 
     public String getDeliveryMethod() {

@@ -10,9 +10,16 @@ import {
     updateCartItem,
     type CartResponse,
 } from "@/lib/cart";
+import {
+    clearGuestCart,
+    getGuestCart,
+    removeGuestCartItem,
+    updateGuestCartItem,
+} from "@/lib/guest-cart";
 import { formatMoney } from "@/lib/format";
 import { useCart } from "@/components/cart/CartProvider";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 function CartPageContent() {
     const [cart, setCart] = useState<CartResponse | null>(null);
@@ -21,12 +28,15 @@ function CartPageContent() {
     const [errorMessage, setErrorMessage] = useState("");
     const [busyItemId, setBusyItemId] = useState<number | null>(null);
     const [isClearing, setIsClearing] = useState(false);
+
     const { refreshCart } = useCart();
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
+        if (authLoading) return;
         loadCart();
-    }, []);
+    }, [authLoading, isAuthenticated]);
 
     async function loadCart() {
         setIsLoading(true);
@@ -34,8 +44,13 @@ function CartPageContent() {
         setMessage("");
 
         try {
-            const data = await getCart();
-            setCart(data);
+            if (isAuthenticated) {
+                const data = await getCart();
+                setCart(data);
+            } else {
+                const data = getGuestCart();
+                setCart(data);
+            }
         } catch (error) {
             if (error instanceof Error && error.message.trim()) {
                 setErrorMessage(error.message);
@@ -55,7 +70,10 @@ function CartPageContent() {
         setErrorMessage("");
 
         try {
-            const updatedCart = await updateCartItem(itemId, quantity);
+            const updatedCart = isAuthenticated
+                ? await updateCartItem(itemId, quantity)
+                : updateGuestCartItem(itemId, quantity);
+
             setCart(updatedCart);
             await refreshCart();
             setMessage("Cantidad actualizada.");
@@ -76,7 +94,10 @@ function CartPageContent() {
         setErrorMessage("");
 
         try {
-            const updatedCart = await removeCartItem(itemId);
+            const updatedCart = isAuthenticated
+                ? await removeCartItem(itemId)
+                : removeGuestCartItem(itemId);
+
             setCart(updatedCart);
             await refreshCart();
             setMessage("Producto eliminado del carrito.");
@@ -97,7 +118,7 @@ function CartPageContent() {
         setErrorMessage("");
 
         try {
-            const updatedCart = await clearCart();
+            const updatedCart = isAuthenticated ? await clearCart() : clearGuestCart();
             setCart(updatedCart);
             await refreshCart();
             setMessage("Carrito vaciado correctamente.");

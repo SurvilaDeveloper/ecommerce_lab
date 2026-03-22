@@ -1,13 +1,12 @@
 //backend/src/main/java/com/gabrielsurvila/commerce_lab/order/controller/AdminOrderController.java
 package com.gabrielsurvila.commerce_lab.order.controller;
 
+import com.gabrielsurvila.commerce_lab.common.dto.PageResponse;
 import com.gabrielsurvila.commerce_lab.order.dto.AdminOrderResponse;
 import com.gabrielsurvila.commerce_lab.order.dto.UpdateAdminOrderStatusRequest;
 import com.gabrielsurvila.commerce_lab.order.service.AdminOrderManagementService;
 import com.gabrielsurvila.commerce_lab.order.service.AdminOrderQueryService;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/orders")
@@ -24,8 +23,22 @@ public class AdminOrderController {
     }
 
     @GetMapping
-    public List<AdminOrderResponse> findAll() {
-        return adminOrderQueryService.findAllOrders();
+    public PageResponse<AdminOrderResponse> findAll(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String deliveryMethod,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String paymentStatus,
+            @RequestParam(required = false) String fulfillmentStatus,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        return adminOrderQueryService.findOrders(
+                search,
+                deliveryMethod,
+                status,
+                paymentStatus,
+                fulfillmentStatus,
+                page,
+                size);
     }
 
     @GetMapping("/{orderId}")

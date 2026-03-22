@@ -108,6 +108,8 @@ public class OrderQueryService {
                 order.getShippingTotal(),
                 order.getTaxTotal(),
                 order.getGrandTotal(),
+                order.getCustomerEmail(),
+                order.getOrderSource(),
                 order.getDeliveryMethod(),
                 order.getRecipientName(),
                 order.getPhone(),

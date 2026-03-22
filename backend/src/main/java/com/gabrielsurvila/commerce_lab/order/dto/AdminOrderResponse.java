@@ -11,6 +11,7 @@ public class AdminOrderResponse {
     private final Long userId;
     private final String customerName;
     private final String customerEmail;
+    private final String orderSource;
     private final String orderNumber;
     private final String status;
     private final String paymentStatus;
@@ -34,6 +35,7 @@ public class AdminOrderResponse {
             Long userId,
             String customerName,
             String customerEmail,
+            String orderSource,
             String orderNumber,
             String status,
             String paymentStatus,
@@ -55,6 +57,7 @@ public class AdminOrderResponse {
         this.userId = userId;
         this.customerName = customerName;
         this.customerEmail = customerEmail;
+        this.orderSource = orderSource;
         this.orderNumber = orderNumber;
         this.status = status;
         this.paymentStatus = paymentStatus;
@@ -88,6 +91,10 @@ public class AdminOrderResponse {
 
     public String getCustomerEmail() {
         return customerEmail;
+    }
+
+    public String getOrderSource() {
+        return orderSource;
     }
 
     public String getOrderNumber() {

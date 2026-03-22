@@ -24,9 +24,10 @@ export type AdminOrderAddressResponse = {
 
 export type AdminOrderResponse = {
     id: number;
-    userId: number;
+    userId: number | null;
     customerName: string;
     customerEmail: string;
+    orderSource: string;
     orderNumber: string;
     status: string;
     paymentStatus: string;
@@ -46,16 +47,68 @@ export type AdminOrderResponse = {
     items: AdminOrderItemResponse[];
 };
 
+export type AdminOrdersPageResponse = {
+    content: AdminOrderResponse[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+    first: boolean;
+    last: boolean;
+};
+
+export type GetAdminOrdersParams = {
+    search?: string;
+    deliveryMethod?: string;
+    status?: string;
+    paymentStatus?: string;
+    fulfillmentStatus?: string;
+    page?: number;
+    size?: number;
+};
+
 export type UpdateAdminOrderStatusRequest = {
     status: string;
     paymentStatus: string;
     fulfillmentStatus: string;
 };
 
-export async function getAdminOrders() {
-    return apiFetchJson<AdminOrderResponse[]>("/api/admin/orders", {
-        method: "GET",
-    });
+export async function getAdminOrders(params: GetAdminOrdersParams = {}) {
+    const searchParams = new URLSearchParams();
+
+    if (params.search?.trim()) {
+        searchParams.set("search", params.search.trim());
+    }
+
+    if (params.deliveryMethod?.trim()) {
+        searchParams.set("deliveryMethod", params.deliveryMethod.trim());
+    }
+
+    if (params.status?.trim()) {
+        searchParams.set("status", params.status.trim());
+    }
+
+    if (params.paymentStatus?.trim()) {
+        searchParams.set("paymentStatus", params.paymentStatus.trim());
+    }
+
+    if (params.fulfillmentStatus?.trim()) {
+        searchParams.set("fulfillmentStatus", params.fulfillmentStatus.trim());
+    }
+
+    searchParams.set("page", String(params.page ?? 0));
+    searchParams.set("size", String(params.size ?? 10));
+
+    const query = searchParams.toString();
+
+    return apiFetchJson<AdminOrdersPageResponse>(
+        `/api/admin/orders${query ? `?${query}` : ""}`,
+        {
+            method: "GET",
+        }
+    );
 }
 
 export async function getAdminOrderById(orderId: number) {

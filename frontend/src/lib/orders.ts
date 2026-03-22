@@ -60,8 +60,30 @@ export type CheckoutRequest = {
     shippingAddress?: CheckoutAddressRequest;
 };
 
+export type GuestCheckoutItemRequest = {
+    productId: number;
+    quantity: number;
+};
+
+export type GuestCheckoutRequest = {
+    customerEmail: string;
+    deliveryMethod: "PICKUP" | "DELIVERY";
+    recipientName: string;
+    phone: string;
+    notes?: string;
+    shippingAddress?: CheckoutAddressRequest;
+    items: GuestCheckoutItemRequest[];
+};
+
 export async function checkoutOrder(payload: CheckoutRequest) {
     return apiFetchJson<OrderResponse>("/api/orders/checkout", {
+        method: "POST",
+        json: payload,
+    });
+}
+
+export async function guestCheckoutOrder(payload: GuestCheckoutRequest) {
+    return apiFetchJson<OrderResponse>("/api/orders/guest-checkout", {
         method: "POST",
         json: payload,
     });

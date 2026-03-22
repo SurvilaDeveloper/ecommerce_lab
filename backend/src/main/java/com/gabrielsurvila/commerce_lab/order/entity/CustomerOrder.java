@@ -16,9 +16,15 @@ public class CustomerOrder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
     private UserAccount user;
+
+    @Column(name = "customer_email", columnDefinition = "citext")
+    private String customerEmail;
+
+    @Column(name = "order_source", nullable = false, length = 20)
+    private String orderSource = "REGISTERED";
 
     @Column(name = "order_number", nullable = false, unique = true, length = 40)
     private String orderNumber;
@@ -101,6 +107,14 @@ public class CustomerOrder {
         return user;
     }
 
+    public String getCustomerEmail() {
+        return customerEmail;
+    }
+
+    public String getOrderSource() {
+        return orderSource;
+    }
+
     public String getOrderNumber() {
         return orderNumber;
     }
@@ -179,6 +193,14 @@ public class CustomerOrder {
 
     public void setUser(UserAccount user) {
         this.user = user;
+    }
+
+    public void setCustomerEmail(String customerEmail) {
+        this.customerEmail = customerEmail;
+    }
+
+    public void setOrderSource(String orderSource) {
+        this.orderSource = orderSource;
     }
 
     public void setOrderNumber(String orderNumber) {

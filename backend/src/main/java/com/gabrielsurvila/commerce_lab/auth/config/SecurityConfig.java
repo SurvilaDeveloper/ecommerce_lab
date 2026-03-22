@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -56,6 +55,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/auth/signup").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
+
+                        .requestMatchers(HttpMethod.POST, "/api/orders/guest-checkout").permitAll()
+
                         .requestMatchers("/api/auth/logout").authenticated()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers("/api/cart").authenticated()

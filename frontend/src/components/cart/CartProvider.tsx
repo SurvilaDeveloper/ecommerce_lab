@@ -11,6 +11,7 @@ import {
     type ReactNode,
 } from "react";
 import { getCart, type CartResponse } from "@/lib/cart";
+import { getGuestCart } from "@/lib/guest-cart";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 type CartContextValue = {
@@ -40,22 +41,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const refreshCart = useCallback(async () => {
-        if (!isAuthenticated) {
-            setCart(null);
+        if (authLoading) {
             return;
         }
 
         setIsLoading(true);
 
         try {
-            const data = await getCart();
-            setCart(data);
+            if (isAuthenticated) {
+                const data = await getCart();
+                setCart(data);
+            } else {
+                const data = getGuestCart();
+                setCart(data);
+            }
         } catch {
             setCart(null);
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated]);
+    }, [authLoading, isAuthenticated]);
 
     const openCartPreview = useCallback(() => {
         setIsOpen(true);
@@ -71,14 +76,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (authLoading) return;
-
-        if (!isAuthenticated) {
-            setCart(null);
-            setIsLoading(false);
-            setIsOpen(false);
-            return;
-        }
-
         refreshCart();
     }, [authLoading, isAuthenticated, refreshCart]);
 

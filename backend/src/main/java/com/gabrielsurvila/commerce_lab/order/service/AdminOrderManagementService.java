@@ -118,19 +118,33 @@ public class AdminOrderManagementService {
                                         address.getCountryCode());
                 }
 
-                String firstName = order.getUser().getFirstName() == null ? "" : order.getUser().getFirstName().trim();
-                String lastName = order.getUser().getLastName() == null ? "" : order.getUser().getLastName().trim();
-                String customerName = (firstName + " " + lastName).trim();
+                Long userId = order.getUser() != null ? order.getUser().getId() : null;
 
-                if (customerName.isBlank()) {
-                        customerName = order.getUser().getEmail();
+                String customerEmail = order.getUser() != null
+                                ? order.getUser().getEmail()
+                                : order.getCustomerEmail();
+
+                String customerName;
+                if (order.getUser() != null) {
+                        String firstName = order.getUser().getFirstName() == null ? ""
+                                        : order.getUser().getFirstName().trim();
+                        String lastName = order.getUser().getLastName() == null ? ""
+                                        : order.getUser().getLastName().trim();
+                        customerName = (firstName + " " + lastName).trim();
+
+                        if (customerName.isBlank()) {
+                                customerName = customerEmail;
+                        }
+                } else {
+                        customerName = order.getRecipientName();
                 }
 
                 return new AdminOrderResponse(
                                 order.getId(),
-                                order.getUser().getId(),
+                                userId,
                                 customerName,
-                                order.getUser().getEmail(),
+                                customerEmail,
+                                order.getOrderSource(),
                                 order.getOrderNumber(),
                                 order.getStatus(),
                                 order.getPaymentStatus(),
